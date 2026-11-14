@@ -14,15 +14,13 @@ import { settingsAtom } from '../../state/settings';
 import { allInvitesAtom } from '../../state/room-list/inviteList';
 import { usePreviousValue } from '../../hooks/usePreviousValue';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
-import { getInboxInvitesPath, getInboxNotificationsPath } from '../pathUtils';
+import { SIA_WALL_PATH } from '../../sia/paths';
 import {
-  getMemberDisplayName,
   getNotificationType,
   getUnreadInfo,
   isNotificationEvent,
 } from '../../utils/room';
 import { NotificationType, UnreadInfo } from '../../../types/matrix/room';
-import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { useSelectedRoom } from '../../hooks/router/useSelectedRoom';
 import { useInboxNotificationsSelected } from '../../hooks/router/useInbox';
 import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
@@ -87,16 +85,16 @@ function InviteNotifications() {
   const [notificationSound] = useSetting(settingsAtom, 'isNotificationSounds');
 
   const notify = useCallback(
-    (count: number) => {
-      const noti = new window.Notification('Invitation', {
+    () => {
+      const noti = new window.Notification('SIA', {
         icon: LogoSVG,
         badge: LogoSVG,
-        body: `You have ${count} new invitation request.`,
+        body: 'Nouvelle demande reçue',
         silent: true,
       });
 
       noti.onclick = () => {
-        if (!window.closed) navigate(getInboxInvitesPath());
+        if (!window.closed) navigate(SIA_WALL_PATH);
         noti.close();
       };
     },
@@ -111,7 +109,7 @@ function InviteNotifications() {
   useEffect(() => {
     if (invites.length > perviousInviteLen && mx.getSyncState() === 'SYNCING') {
       if (showNotifications && notificationPermission('granted')) {
-        notify(invites.length - perviousInviteLen);
+        notify();
       }
 
       if (notificationSound) {
@@ -141,36 +139,22 @@ function MessageNotifications() {
   const notificationSelected = useInboxNotificationsSelected();
   const selectedRoomId = useSelectedRoom();
 
-  const notify = useCallback(
-    ({
-      roomName,
-      roomAvatar,
-      username,
-    }: {
-      roomName: string;
-      roomAvatar?: string;
-      username: string;
-      roomId: string;
-      eventId: string;
-    }) => {
-      const noti = new window.Notification(roomName, {
-        icon: roomAvatar,
-        badge: roomAvatar,
-        body: `New inbox notification from ${username}`,
-        silent: true,
-      });
+  const notify = useCallback(() => {
+    // SIA: notifications never say who wrote or in which room.
+    const noti = new window.Notification('SIA', {
+      body: 'Nouveau message',
+      silent: true,
+    });
 
-      noti.onclick = () => {
-        if (!window.closed) navigate(getInboxNotificationsPath());
-        noti.close();
-        notifRef.current = undefined;
-      };
+    noti.onclick = () => {
+      if (!window.closed) navigate(SIA_WALL_PATH);
+      noti.close();
+      notifRef.current = undefined;
+    };
 
-      notifRef.current?.close();
-      notifRef.current = noti;
-    },
-    [navigate]
-  );
+    notifRef.current?.close();
+    notifRef.current = noti;
+  }, [navigate]);
 
   const playSound = useCallback(() => {
     const audioElement = audioRef.current;
@@ -213,17 +197,7 @@ function MessageNotifications() {
       }
 
       if (showNotifications && notificationPermission('granted')) {
-        const avatarMxc =
-          room.getAvatarFallbackMember()?.getMxcAvatarUrl() ?? room.getMxcAvatarUrl();
-        notify({
-          roomName: room.name ?? 'Unknown',
-          roomAvatar: avatarMxc
-            ? mxcUrlToHttp(mx, avatarMxc, useAuthentication, 96, 96, 'crop') ?? undefined
-            : undefined,
-          username: getMemberDisplayName(room, sender) ?? getMxIdLocalPart(sender) ?? sender,
-          roomId: room.roomId,
-          eventId,
-        });
+        notify();
       }
 
       if (notificationSound) {

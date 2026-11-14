@@ -1,15 +1,17 @@
-// SIA: the bubble screen — every message disappears 5 s after being sent, on both sides.
-import React, { FormEvent, useEffect, useRef, useState } from 'react';
+// SIA: the bubble screen — every message disappears 5 s after it appears, on both sides.
+import React, { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MatrixEvent, MatrixEventEvent, RoomEvent, RoomStateEvent } from 'matrix-js-sdk';
+import { MatrixEventEvent, RoomEvent, RoomStateEvent } from 'matrix-js-sdk';
 import { Box, Button, Input, Text, color, config, toRem } from 'folds';
 import { useMatrixClient } from '../hooks/useMatrixClient';
-import { getBulleState, MESSAGE_LIFETIME_MS, silenceRadio } from './bulle';
+import { getBulleState, isBulleMessage, silenceRadio } from './bulle';
+import { remainingMs } from './ephemeral';
+import { getSeenAt } from './SiaEphemeralSweeper';
 import { SIA_WALL_PATH } from './paths';
 
 const TICK_MS = 500;
 
-type Bubble = { id: string; sender: string; body: string; ts: number };
+type Bubble = { id: string; sender: string; body: string; leftMs: number };
 
 function useBulleRoom(roomId: string) {
   const mx = useMatrixClient();
@@ -30,9 +32,6 @@ function useBulleRoom(roomId: string) {
   return { room: mx.getRoom(roomId), version };
 }
 
-const isMessage = (evt: MatrixEvent): boolean =>
-  !evt.isRedacted() && (evt.getType() === 'm.room.message' || evt.getType() === 'm.room.encrypted');
-
 export function SiaBulle() {
   const mx = useMatrixClient();
   const navigate = useNavigate();
@@ -42,8 +41,6 @@ export function SiaBulle() {
   const [now, setNow] = useState(() => Date.now());
   const [sending, setSending] = useState(false);
   const [confirmSilence, setConfirmSilence] = useState(false);
-  const firstSeen = useRef(new Map<string, number>());
-  const deleted = useRef(new Set<string>());
   const me = mx.getUserId();
 
   useEffect(() => {
@@ -55,37 +52,24 @@ export function SiaBulle() {
   const aliasOf = (userId: string) => state?.aliases[userId] ?? 'Inconnu';
   const events = room?.getLiveTimeline().getEvents() ?? [];
 
-  // Hide what is older than 5 s (server time, or first seen here if the clocks disagree).
+  // Each message is shown for 5 s from its arrival on this device (timed by SiaEphemeralSweeper,
+  // which also deletes it from the server). Anything not seen arriving live stays hidden.
   const bubbles: Bubble[] = [];
-  events.filter(isMessage).forEach((evt) => {
+  events.filter(isBulleMessage).forEach((evt) => {
     const id = evt.getId();
-    if (!id) return;
-    const seen = firstSeen.current.get(id) ?? now;
-    firstSeen.current.set(id, seen);
-    if (now - evt.getTs() >= MESSAGE_LIFETIME_MS || now - seen >= MESSAGE_LIFETIME_MS) return;
+    const leftMs = remainingMs(getSeenAt(evt), now);
+    if (!id || leftMs === 0) return;
     const body =
       evt.getType() === 'm.room.encrypted'
         ? '🔒 déchiffrement...'
         : String(evt.getContent().body ?? '');
-    bubbles.push({ id, sender: evt.getSender() ?? '', body, ts: evt.getTs() });
-  });
-
-  // Our own expired messages are also deleted from the server.
-  useEffect(() => {
-    events
-      .filter((evt) => isMessage(evt) && evt.getSender() === me)
-      .filter((evt) => now - evt.getTs() >= MESSAGE_LIFETIME_MS)
-      .forEach((evt) => {
-        const id = evt.getId();
-        if (!id || id.startsWith('~') || deleted.current.has(id)) return;
-        deleted.current.add(id);
-        mx.redactEvent(roomId, id).catch(() => deleted.current.delete(id));
-      });
+    bubbles.push({ id: evt.getTxnId() ?? id, sender: evt.getSender() ?? '', body, leftMs });
   });
 
   const others = room?.getJoinedMembers().filter((m) => m.userId !== me) ?? [];
   const invited = room?.getMembersWithMembership('invite') ?? [];
   const closed = !!room && others.length === 0 && invited.length === 0;
+  const waiting = others.length === 0 && invited.length > 0;
   let otherLabel = '—';
   if (others[0]) otherLabel = aliasOf(others[0].userId);
   else if (invited[0]) otherLabel = `${aliasOf(invited[0].userId)} (invité)`;
@@ -172,14 +156,19 @@ export function SiaBulle() {
         style={{ padding: config.space.S400, overflowY: 'auto' }}
       >
         {closed && <Text priority="400">L&apos;autre personne a fermé la bulle.</Text>}
-        {!closed && bubbles.length === 0 && (
+        {waiting && (
           <Text size="T300" priority="400" align="Center">
-            Ici, chaque message disparaît 5 secondes après l&apos;envoi. Sois réactif.
+            En attente de sa réponse... Tu pourras écrire dès qu&apos;il aura accepté.
+          </Text>
+        )}
+        {!closed && !waiting && bubbles.length === 0 && (
+          <Text size="T300" priority="400" align="Center">
+            Ici, chaque message disparaît 5 secondes après s&apos;être affiché. Sois réactif.
           </Text>
         )}
         {bubbles.map((b) => {
           const mine = b.sender === me;
-          const left = Math.max(0, Math.ceil((MESSAGE_LIFETIME_MS - (now - b.ts)) / 1000));
+          const left = Math.ceil(b.leftMs / 1000);
           return (
             <Box key={b.id} direction="Column" alignItems={mine ? 'End' : 'Start'}>
               <Box
@@ -219,11 +208,12 @@ export function SiaBulle() {
               name="message"
               autoComplete="off"
               maxLength={2000}
-              placeholder="Écris... (s'efface en 5 s)"
+              disabled={waiting}
+              placeholder={waiting ? 'En attente...' : "Écris... (s'efface en 5 s)"}
               style={{ flexGrow: 1 }}
               autoFocus
             />
-            <Button type="submit" variant="Primary" disabled={sending}>
+            <Button type="submit" variant="Primary" disabled={sending || waiting}>
               <Text size="B400">Envoyer</Text>
             </Button>
           </Box>

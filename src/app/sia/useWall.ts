@@ -25,7 +25,7 @@ export function useWall(): WallState {
     let cancelled = false;
     ensureWallRoom(mx)
       .then((id) => !cancelled && setRoomId(id))
-      .catch(() => !cancelled && setError("Impossible d'ouvrir le Mur. Vérifie ta connexion."));
+      .catch(() => !cancelled && setError('Le Mur est indisponible. Vérifie ta connexion.'));
     return () => {
       cancelled = true;
     };
@@ -50,8 +50,7 @@ export function useWall(): WallState {
         .catch(() => undefined)
         .finally(() => {
           refresh();
-          const loaded = mx.getRoom(roomId)?.getLiveTimeline().getEvents() ?? [];
-          cleanupOwnExpired(mx, roomId, loaded, Date.now());
+          cleanupOwnExpired(mx, roomId, Date.now());
         });
     };
     if (room) onRoomReady();

@@ -37,17 +37,21 @@ export function SiaBulleList() {
   const navigate = useNavigate();
   const rooms = useBulleRooms();
   const [busy, setBusy] = useState<string>();
+  const [refused, setRefused] = useState(false);
   const me = mx.getUserId() ?? '';
 
   const invites = rooms.filter((r) => r.getMyMembership() === 'invite');
   const open = rooms.filter((r) => r.getMyMembership() === 'join');
-  if (invites.length === 0 && open.length === 0) return null;
+  if (invites.length === 0 && open.length === 0 && !refused) return null;
 
   const handleAccept = async (roomId: string) => {
     setBusy(roomId);
+    setRefused(false);
     try {
       await acceptBulle(mx, roomId);
       navigate(siaBullePath(roomId));
+    } catch {
+      setRefused(true);
     } finally {
       setBusy(undefined);
     }
@@ -61,6 +65,7 @@ export function SiaBulleList() {
 
   return (
     <Box direction="Column" gap="200">
+      {refused && <Text size="T300">Demande non valide : elle a été refusée.</Text>}
       {invites.map((room) => {
         const reason = room.getMember(me)?.events.member?.getContent().reason;
         return (

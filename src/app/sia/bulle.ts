@@ -1,11 +1,12 @@
 // SIA: "La bulle" — a private end-to-end encrypted room between two people, opened from an announcement.
-import { MatrixClient, Preset, Room, Visibility } from 'matrix-js-sdk';
+import { MatrixClient, MatrixEvent, Preset, Room, Visibility } from 'matrix-js-sdk';
 import { SiaProfile, SiaRole, ROLE_LABELS } from './profile';
-import { SiaAnnonce } from './wall';
+import { findWallRoomId, SiaAnnonce } from './wall';
 
 export const SIA_BULLE_STATE = 'io.sia.bulle';
 export const BULLE_ROOM_NAME = 'SIA · Bulle';
-export const MESSAGE_LIFETIME_MS = 5_000;
+const JOIN_WAIT_MS = 10_000;
+const JOIN_POLL_MS = 150;
 
 const CODE_WORDS = [
   'Alpha',
@@ -58,6 +59,10 @@ export function getBulleState(room: Room): BulleState | undefined {
 
 export const isBulleRoom = (room: Room): boolean => room.name === BULLE_ROOM_NAME;
 
+/** Anything written in a bubble (not room state, not a deletion) is ephemeral. */
+export const isBulleMessage = (evt: MatrixEvent): boolean =>
+  !evt.isState() && !evt.isRedacted() && evt.getType() !== 'm.room.redaction';
+
 /** "Tu es dispo ?": opens an encrypted bubble with the author of the announcement and invites them. */
 export async function openBulle(
   mx: MatrixClient,
@@ -74,9 +79,11 @@ export async function openBulle(
   };
   const { room_id: roomId } = await mx.createRoom({
     name: BULLE_ROOM_NAME,
-    preset: Preset.TrustedPrivateChat,
+    preset: Preset.PrivateChat,
     visibility: Visibility.Private,
     is_direct: true,
+    // Both sides may delete any message: that is how expired messages leave the server.
+    power_level_content_override: { redact: 0 },
     initial_state: [
       { type: 'm.room.encryption', state_key: '', content: { algorithm: 'm.megolm.v1.aes-sha2' } },
       {
@@ -91,15 +98,21 @@ export async function openBulle(
   return roomId;
 }
 
-/** Accepting a request: join the bubble and take our announcement off the wall. */
-export async function acceptBulle(mx: MatrixClient, roomId: string): Promise<void> {
-  await mx.joinRoom(roomId);
-  const room = mx.getRoom(roomId);
-  const state = room ? getBulleState(room) : undefined;
-  if (!state) return;
-  const annonce = mx.getRoom(state.wallRoomId)?.findEventById(state.annonceEventId);
-  if (annonce && annonce.getSender() === mx.getUserId() && !annonce.isRedacted()) {
-    await mx.redactEvent(state.wallRoomId, state.annonceEventId).catch(() => undefined);
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+/** Waits until the joined room and its state have reached this device. */
+async function waitForJoinedRoom(mx: MatrixClient, roomId: string): Promise<Room | undefined> {
+  const deadline = Date.now() + JOIN_WAIT_MS;
+  for (;;) {
+    const room = mx.getRoom(roomId);
+    if (room?.getMyMembership() === 'join' && room.currentState.getStateEvents('m.room.create', ''))
+      return room;
+    if (Date.now() >= deadline) return undefined;
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(JOIN_POLL_MS);
   }
 }
 
@@ -108,16 +121,33 @@ export async function declineBulle(mx: MatrixClient, roomId: string): Promise<vo
   await mx.forget(roomId).catch(() => undefined);
 }
 
-/** "Silence Radio": delete everything we wrote, then leave and forget the bubble. */
+/**
+ * Accepting a request: join, check it is a real bubble (encrypted, tied to an announcement of the wall),
+ * then take our announcement off the wall. A fake bubble is left at once and the call throws.
+ */
+export async function acceptBulle(mx: MatrixClient, roomId: string): Promise<void> {
+  await mx.joinRoom(roomId);
+  const room = await waitForJoinedRoom(mx, roomId);
+  const state = room ? getBulleState(room) : undefined;
+  const wallRoomId = findWallRoomId(mx);
+  const valid =
+    !!room && room.hasEncryptionStateEvent() && !!state && state.wallRoomId === wallRoomId;
+  if (!valid || !state) {
+    await declineBulle(mx, roomId).catch(() => undefined);
+    throw new Error('Invalid bubble');
+  }
+  // Only our own announcement can be removed by us: the server refuses anything else.
+  await mx.redactEvent(state.wallRoomId, state.annonceEventId).catch(() => undefined);
+}
+
+/** "Silence Radio": delete every message still there, from both sides, then leave and forget. */
 export async function silenceRadio(mx: MatrixClient, roomId: string): Promise<void> {
   const room = mx.getRoom(roomId);
-  const me = mx.getUserId();
-  const mine = (room?.getLiveTimeline().getEvents() ?? []).filter(
-    (evt) => evt.getSender() === me && !evt.isState() && !evt.isRedacted() && evt.getId()
-  );
-  await Promise.all(
-    mine.map((evt) => mx.redactEvent(roomId, evt.getId() as string).catch(() => undefined))
-  );
+  const ids = (room?.getLiveTimeline().getEvents() ?? [])
+    .filter(isBulleMessage)
+    .map((evt) => evt.getId())
+    .filter((id): id is string => !!id && !id.startsWith('~'));
+  await Promise.all(ids.map((id) => mx.redactEvent(roomId, id).catch(() => undefined)));
   await mx.leave(roomId).catch(() => undefined);
   await mx.forget(roomId).catch(() => undefined);
 }

@@ -16,6 +16,7 @@
     "check:prettier": "prettier --check .",
     "fix:prettier": "prettier --write .",
     "typecheck": "tsc --noEmit",
+    "test:sia": "node --test tests-sia/logic.test.ts",
     "prepare": "husky install",
     "commit": "git-cz",
     "bump": "node scripts/update-version.js"

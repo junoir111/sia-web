@@ -7,17 +7,7 @@ import {
   SidebarStackSeparator,
   SidebarStack,
 } from '../../components/sidebar';
-import {
-  DirectTab,
-  HomeTab,
-  SpaceTabs,
-  InboxTab,
-  ExploreTab,
-  SettingsTab,
-  UnverifiedTab,
-  SearchTab,
-} from './sidebar';
-import { CreateTab } from './sidebar/CreateTab';
+import { SettingsTab, UnverifiedTab } from './sidebar';
 import { SiaWallTab } from '../../sia/SiaWallTab';
 
 export function SidebarNav() {
@@ -30,14 +20,6 @@ export function SidebarNav() {
           <Scroll ref={scrollRef} variant="Background" size="0">
             <SidebarStack>
               <SiaWallTab />
-              <HomeTab />
-              <DirectTab />
-            </SidebarStack>
-            <SpaceTabs scrollRef={scrollRef} />
-            <SidebarStackSeparator />
-            <SidebarStack>
-              <ExploreTab />
-              <CreateTab />
             </SidebarStack>
           </Scroll>
         }
@@ -45,9 +27,7 @@ export function SidebarNav() {
           <>
             <SidebarStackSeparator />
             <SidebarStack>
-              <SearchTab />
               <UnverifiedTab />
-              <InboxTab />
               <SettingsTab />
             </SidebarStack>
           </>
