@@ -10,6 +10,7 @@ import {
   getAfterLoginRedirectPath,
 } from '../../afterLoginRedirectPath';
 import { getHomePath } from '../../pathUtils';
+import { SIA_WALL_PATH } from '../../../sia/paths';
 import { setFallbackSession } from '../../../state/sessions';
 
 export enum GetBaseUrlError {
@@ -117,7 +118,7 @@ export const useLoginComplete = (data?: CustomLoginResponse) => {
       setFallbackSession(loginRes.access_token, loginRes.device_id, loginRes.user_id, loginBaseUrl);
       const afterLoginRedirectUrl = getAfterLoginRedirectPath();
       deleteAfterLoginRedirectPath();
-      navigate(afterLoginRedirectUrl ?? getHomePath(), { replace: true });
+      navigate(afterLoginRedirectUrl ?? SIA_WALL_PATH, { replace: true });
     }
   }, [data, navigate]);
 };

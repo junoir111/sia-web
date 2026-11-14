@@ -18,6 +18,7 @@ import {
   SearchTab,
 } from './sidebar';
 import { CreateTab } from './sidebar/CreateTab';
+import { SiaWallTab } from '../../sia/SiaWallTab';
 
 export function SidebarNav() {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -28,6 +29,7 @@ export function SidebarNav() {
         scrollable={
           <Scroll ref={scrollRef} variant="Background" size="0">
             <SidebarStack>
+              <SiaWallTab />
               <HomeTab />
               <DirectTab />
             </SidebarStack>

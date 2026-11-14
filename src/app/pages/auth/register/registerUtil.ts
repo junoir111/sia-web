@@ -16,6 +16,7 @@ import {
 } from '../../afterLoginRedirectPath';
 import { getHomePath, getLoginPath, withSearchParam } from '../../pathUtils';
 import { getMxIdLocalPart, getMxIdServer } from '../../../utils/matrix';
+import { SIA_WALL_PATH } from '../../../sia/paths';
 import { setFallbackSession } from '../../../state/sessions';
 
 export enum RegisterError {
@@ -122,7 +123,7 @@ export const useRegisterComplete = (data?: CustomRegisterResponse) => {
         setFallbackSession(accessToken, deviceId, userId, baseUrl);
         const afterLoginRedirectPath = getAfterLoginRedirectPath();
         deleteAfterLoginRedirectPath();
-        navigate(afterLoginRedirectPath ?? getHomePath(), { replace: true });
+        navigate(afterLoginRedirectPath ?? SIA_WALL_PATH, { replace: true });
       } else {
         const username = getMxIdLocalPart(userId);
         const userServer = getMxIdServer(userId);

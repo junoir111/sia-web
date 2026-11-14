@@ -1,0 +1,260 @@
+// SIA: "Le Mur" page — publish, see and filter ephemeral announcements.
+import React, { FormEvent, useState } from 'react';
+import { Box, Button, Input, Scroll, Text, color, config, toRem } from 'folds';
+import { useMatrixClient } from '../hooks/useMatrixClient';
+import { ROLE_LABELS, SiaProfile, SiaRole } from './profile';
+import { useSiaProfile } from './useSiaProfile';
+import { useWall } from './useWall';
+import { DURATIONS_HOURS, formatRemaining, publishAnnonce, SiaAnnonce } from './wall';
+
+type RoleFilter = 'tous' | SiaRole;
+
+const cardStyle = {
+  backgroundColor: color.SurfaceVariant.Container,
+  color: color.SurfaceVariant.OnContainer,
+  border: `1px solid ${color.SurfaceVariant.ContainerLine}`,
+  borderRadius: config.radii.R400,
+  padding: config.space.S400,
+};
+
+type PublishFormProps = { roomId: string; profile: SiaProfile; onDone: () => void };
+
+function PublishForm({ roomId, profile, onDone }: PublishFormProps) {
+  const mx = useMatrixClient();
+  const [duree, setDuree] = useState<number>(3);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string>();
+  const isPrestataire = profile.role === 'prestataire';
+
+  const handleSubmit = async (evt: FormEvent<HTMLFormElement>) => {
+    evt.preventDefault();
+    const form = new FormData(evt.currentTarget);
+    const texte = String(form.get('texte') ?? '').trim();
+    if (!texte) {
+      setError("Écris ton annonce d'abord.");
+      return;
+    }
+    setSending(true);
+    setError(undefined);
+    try {
+      await publishAnnonce(mx, roomId, profile, {
+        texte,
+        categorie: String(form.get('categorie') ?? ''),
+        zone: String(form.get('zone') ?? ''),
+        dureeHeures: duree,
+      });
+      onDone();
+    } catch {
+      setError("L'annonce n'est pas partie. Réessaie.");
+      setSending(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={cardStyle}>
+      <Box direction="Column" gap="300">
+        <Text size="H5">{isPrestataire ? 'Je suis disponible' : "J'ai besoin d'un service"}</Text>
+        <Input
+          variant="Background"
+          outlined
+          name="texte"
+          maxLength={280}
+          autoFocus
+          placeholder={
+            isPrestataire ? 'Dispo de 14 h à 17 h pour dépannage' : 'Besoin d’un plombier ce soir'
+          }
+        />
+        <Box gap="200">
+          <Input
+            variant="Background"
+            outlined
+            name="categorie"
+            maxLength={60}
+            defaultValue={profile.metier}
+            placeholder="Catégorie"
+            style={{ flexGrow: 1, minWidth: 0 }}
+          />
+          <Input
+            variant="Background"
+            outlined
+            name="zone"
+            maxLength={60}
+            defaultValue={profile.zone}
+            placeholder="Zone"
+            style={{ flexGrow: 1, minWidth: 0 }}
+          />
+        </Box>
+        <Box gap="200" alignItems="Center" wrap="Wrap">
+          <Text size="T300">Visible pendant :</Text>
+          {DURATIONS_HOURS.map((h) => (
+            <Button
+              key={h}
+              type="button"
+              size="300"
+              variant={duree === h ? 'Primary' : 'Secondary'}
+              fill={duree === h ? 'Solid' : 'Soft'}
+              onClick={() => setDuree(h)}
+            >
+              <Text size="B300">{h} h</Text>
+            </Button>
+          ))}
+        </Box>
+        {error && <Text size="T300">{error}</Text>}
+        <Box gap="200">
+          <Button type="button" variant="Secondary" fill="Soft" onClick={onDone} disabled={sending}>
+            <Text size="B400">Annuler</Text>
+          </Button>
+          <Button type="submit" variant="Primary" disabled={sending} style={{ flexGrow: 1 }}>
+            <Text size="B400">{sending ? 'Publication...' : 'Publier'}</Text>
+          </Button>
+        </Box>
+      </Box>
+    </form>
+  );
+}
+
+type AnnonceCardProps = { annonce: SiaAnnonce; now: number; isMine: boolean; onRemove: () => void };
+
+function AnnonceCard({ annonce, now, isMine, onRemove }: AnnonceCardProps) {
+  const isPrestataire = annonce.role === 'prestataire';
+  return (
+    <Box direction="Column" gap="200" style={cardStyle}>
+      <Box justifyContent="SpaceBetween" alignItems="Center" gap="200">
+        <Text
+          size="L400"
+          style={{ color: isPrestataire ? color.Primary.Main : color.Secondary.Main }}
+        >
+          {ROLE_LABELS[annonce.role].title.toUpperCase()} · {annonce.pseudo}
+        </Text>
+        <Text size="T200" priority="400">
+          ⏱ {formatRemaining(annonce.fin, now)}
+        </Text>
+      </Box>
+      <Text size="T400">{annonce.texte}</Text>
+      <Text size="T300" priority="400">
+        {[annonce.categorie, annonce.zone].filter(Boolean).join(' · ')}
+      </Text>
+      {isMine && (
+        <Box>
+          <Button size="300" variant="Secondary" fill="Soft" onClick={onRemove}>
+            <Text size="B300">Retirer mon annonce</Text>
+          </Button>
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+export function SiaWall() {
+  const mx = useMatrixClient();
+  const profile = useSiaProfile();
+  const { roomId, annonces, error, now } = useWall();
+  const [publishing, setPublishing] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('tous');
+  const [zoneFilter, setZoneFilter] = useState('');
+  const me = mx.getUserId();
+
+  const zone = zoneFilter.trim().toLowerCase();
+  const visible = annonces
+    .filter((a) => roleFilter === 'tous' || a.role === roleFilter)
+    .filter(
+      (a) =>
+        !zone || a.zone.toLowerCase().includes(zone) || a.categorie.toLowerCase().includes(zone)
+    );
+
+  const handleRemove = (eventId: string) => {
+    if (roomId) mx.redactEvent(roomId, eventId).catch(() => undefined);
+  };
+
+  const filters: { id: RoleFilter; label: string }[] = [
+    { id: 'tous', label: 'Tout' },
+    { id: 'prestataire', label: 'Prestataires' },
+    { id: 'client', label: 'Clients' },
+  ];
+
+  return (
+    <Box
+      grow="Yes"
+      direction="Column"
+      style={{
+        backgroundColor: color.Background.Container,
+        color: color.Background.OnContainer,
+        minWidth: 0,
+      }}
+    >
+      <Scroll hideTrack visibility="Hover">
+        <Box
+          direction="Column"
+          gap="400"
+          style={{
+            padding: config.space.S400,
+            maxWidth: toRem(640),
+            margin: '0 auto',
+            width: '100%',
+          }}
+        >
+          <Box justifyContent="SpaceBetween" alignItems="Center">
+            <Box direction="Column">
+              <Text size="T200" priority="400" style={{ letterSpacing: toRem(4) }}>
+                SIA // LE MUR
+              </Text>
+              <Text size="H3">Annonces en direct</Text>
+            </Box>
+            {!publishing && profile && roomId && (
+              <Button variant="Primary" onClick={() => setPublishing(true)}>
+                <Text size="B400">+ Publier</Text>
+              </Button>
+            )}
+          </Box>
+
+          {publishing && profile && roomId && (
+            <PublishForm roomId={roomId} profile={profile} onDone={() => setPublishing(false)} />
+          )}
+
+          <Box gap="200" alignItems="Center" wrap="Wrap">
+            {filters.map((f) => (
+              <Button
+                key={f.id}
+                size="300"
+                variant={roleFilter === f.id ? 'Primary' : 'Secondary'}
+                fill={roleFilter === f.id ? 'Solid' : 'Soft'}
+                onClick={() => setRoleFilter(f.id)}
+              >
+                <Text size="B300">{f.label}</Text>
+              </Button>
+            ))}
+            <Input
+              variant="Background"
+              outlined
+              size="300"
+              value={zoneFilter}
+              onChange={(e) => setZoneFilter(e.currentTarget.value)}
+              placeholder="Zone ou métier..."
+              style={{ flexGrow: 1, minWidth: toRem(140) }}
+            />
+          </Box>
+
+          {error && <Text size="T300">{error}</Text>}
+          {!error && !roomId && <Text priority="400">Connexion au Mur...</Text>}
+          {roomId && visible.length === 0 && (
+            <Box direction="Column" gap="100" style={cardStyle}>
+              <Text size="H5">Rien pour l&apos;instant</Text>
+              <Text size="T300" priority="400">
+                Les annonces disparaissent toutes seules à la fin de leur créneau. Publie la tienne.
+              </Text>
+            </Box>
+          )}
+          {visible.map((a) => (
+            <AnnonceCard
+              key={a.eventId}
+              annonce={a}
+              now={now}
+              isMine={a.sender === me}
+              onRemove={() => handleRemove(a.eventId)}
+            />
+          ))}
+        </Box>
+      </Scroll>
+    </Box>
+  );
+}

@@ -41,6 +41,8 @@ import {
 } from './pathUtils';
 import { ClientBindAtoms, ClientLayout, ClientRoot } from './client';
 import { SiaProfileGate } from '../sia/SiaProfileGate';
+import { SiaWall } from '../sia/SiaWall';
+import { SIA_WALL_PATH } from '../sia/paths';
 import { Home, HomeRouteRoomProvider, HomeSearch } from './client/home';
 import { Direct, DirectCreate, DirectRouteRoomProvider } from './client/direct';
 import { RouteSpaceProvider, Space, SpaceRouteRoomProvider, SpaceSearch } from './client/space';
@@ -81,7 +83,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
       <Route
         index
         loader={() => {
-          if (getFallbackSession()) return redirect(getHomePath());
+          if (getFallbackSession()) return redirect(SIA_WALL_PATH);
           const afterLoginPath = getAppPathFromHref(getOriginBaseUrl(), window.location.href);
           if (afterLoginPath) setAfterLoginRedirectPath(afterLoginPath);
           return redirect(getLoginPath());
@@ -90,7 +92,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
       <Route
         loader={() => {
           if (getFallbackSession()) {
-            return redirect(getHomePath());
+            return redirect(SIA_WALL_PATH);
           }
 
           return null;
@@ -157,6 +159,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
           </AuthRouteThemeManager>
         }
       >
+        <Route path={SIA_WALL_PATH} element={<SiaWall />} />
         <Route
           path={HOME_PATH}
           element={
