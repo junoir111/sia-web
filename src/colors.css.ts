@@ -236,3 +236,58 @@ export const butterTheme = createTheme(color, {
     OnContainer: '#F2EED3',
   },
 });
+
+// SIA: "Code vert" theme, green on black, secret agent style.
+export const codeVertTheme = createTheme(color, {
+  ...darkThemeData,
+  Background: {
+    Container: '#0A0F0C',
+    ContainerHover: '#101A14',
+    ContainerActive: '#16241B',
+    ContainerLine: '#1A2B20',
+    OnContainer: '#B8F5CF',
+  },
+  Surface: {
+    Container: '#0D1510',
+    ContainerHover: '#101A14',
+    ContainerActive: '#16241B',
+    ContainerLine: '#2A4534',
+    OnContainer: '#B8F5CF',
+  },
+  SurfaceVariant: {
+    Container: '#101A14',
+    ContainerHover: '#16241B',
+    ContainerActive: '#1C2E22',
+    ContainerLine: '#2A4534',
+    OnContainer: '#B8F5CF',
+  },
+  Primary: {
+    Main: '#2FD27A',
+    MainHover: '#29B96B',
+    MainActive: '#239E5C',
+    MainLine: '#1F8C51',
+    OnMain: '#04140A',
+    Container: '#0F3A24',
+    ContainerHover: '#124429',
+    ContainerActive: '#154E2F',
+    ContainerLine: '#195835',
+    OnContainer: '#B8F5CF',
+  },
+  Secondary: {
+    Main: '#B8F5CF',
+    MainHover: '#9EE0B8',
+    MainActive: '#8ED4AA',
+    MainLine: '#7EC89C',
+    OnMain: '#0A0F0C',
+    Container: '#16241B',
+    ContainerHover: '#1C2E22',
+    ContainerActive: '#22382A',
+    ContainerLine: '#2A4534',
+    OnContainer: '#B8F5CF',
+  },
+  Other: {
+    FocusRing: 'rgba(47, 210, 122, 0.5)',
+    Shadow: 'rgba(0, 0, 0, 1)',
+    Overlay: 'rgba(0, 0, 0, 0.85)',
+  },
+});

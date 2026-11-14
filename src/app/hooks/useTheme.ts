@@ -1,7 +1,7 @@
 import { lightTheme } from 'folds';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { onDarkFontWeight, onLightFontWeight } from '../../config.css';
-import { butterTheme, darkTheme, silverTheme } from '../../colors.css';
+import { butterTheme, codeVertTheme, darkTheme, silverTheme } from '../../colors.css';
 import { settingsAtom } from '../state/settings';
 import { useSetting } from '../state/hooks/settings';
 
@@ -36,6 +36,13 @@ export const ButterTheme: Theme = {
   id: 'butter-theme',
   kind: ThemeKind.Dark,
   classNames: ['butter-theme', butterTheme, onDarkFontWeight, 'prism-dark'],
+};
+
+// SIA: the only theme used by the app.
+export const CodeVertTheme: Theme = {
+  id: 'code-vert-theme',
+  kind: ThemeKind.Dark,
+  classNames: ['dark-theme', 'code-vert-theme', codeVertTheme, onDarkFontWeight, 'prism-dark'],
 };
 
 export const useThemes = (): Theme[] => {
@@ -75,7 +82,9 @@ export const useSystemThemeKind = (): ThemeKind => {
   return themeKind;
 };
 
-export const useActiveTheme = (): Theme => {
+export const useActiveTheme = (): Theme => CodeVertTheme;
+
+export const useCinnyActiveTheme = (): Theme => {
   const systemThemeKind = useSystemThemeKind();
   const themes = useThemes();
   const [systemTheme] = useSetting(settingsAtom, 'useSystemTheme');

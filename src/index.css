@@ -135,3 +135,8 @@ li p::before {
   content: '';
   display: inline-block;
 }
+
+/* SIA: "Code vert" uses a terminal-style monospace font everywhere. */
+.code-vert-theme {
+  --font-secondary: ui-monospace, 'Cascadia Mono', 'Roboto Mono', 'DejaVu Sans Mono', Menlo, Consolas, monospace;
+}

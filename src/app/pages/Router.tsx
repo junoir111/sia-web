@@ -40,6 +40,7 @@ import {
   getSpaceLobbyPath,
 } from './pathUtils';
 import { ClientBindAtoms, ClientLayout, ClientRoot } from './client';
+import { SiaProfileGate } from '../sia/SiaProfileGate';
 import { Home, HomeRouteRoomProvider, HomeSearch } from './client/home';
 import { Direct, DirectCreate, DirectRouteRoomProvider } from './client/direct';
 import { RouteSpaceProvider, Space, SpaceRouteRoomProvider, SpaceSearch } from './client/space';
@@ -127,15 +128,17 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
                   <ClientBindAtoms>
                     <ClientNonUIFeatures>
                       <CallEmbedProvider>
-                        <ClientLayout
-                          nav={
-                            <MobileFriendlyClientNav>
-                              <SidebarNav />
-                            </MobileFriendlyClientNav>
-                          }
-                        >
-                          <Outlet />
-                        </ClientLayout>
+                        <SiaProfileGate>
+                          <ClientLayout
+                            nav={
+                              <MobileFriendlyClientNav>
+                                <SidebarNav />
+                              </MobileFriendlyClientNav>
+                            }
+                          >
+                            <Outlet />
+                          </ClientLayout>
+                        </SiaProfileGate>
                         <CallStatusRenderer />
                       </CallEmbedProvider>
                       <SearchModalRenderer />
