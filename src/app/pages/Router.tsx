@@ -42,7 +42,8 @@ import {
 import { ClientBindAtoms, ClientLayout, ClientRoot } from './client';
 import { SiaProfileGate } from '../sia/SiaProfileGate';
 import { SiaWall } from '../sia/SiaWall';
-import { SIA_WALL_PATH } from '../sia/paths';
+import { SiaBulle } from '../sia/SiaBulle';
+import { SIA_BULLE_PATH, SIA_WALL_PATH } from '../sia/paths';
 import { Home, HomeRouteRoomProvider, HomeSearch } from './client/home';
 import { Direct, DirectCreate, DirectRouteRoomProvider } from './client/direct';
 import { RouteSpaceProvider, Space, SpaceRouteRoomProvider, SpaceSearch } from './client/space';
@@ -160,6 +161,7 @@ export const createRouter = (clientConfig: ClientConfig, screenSize: ScreenSize)
         }
       >
         <Route path={SIA_WALL_PATH} element={<SiaWall />} />
+        <Route path={SIA_BULLE_PATH} element={<SiaBulle />} />
         <Route
           path={HOME_PATH}
           element={

@@ -119,7 +119,7 @@ export function cleanupOwnExpired(
       (evt) => evt.getType() === SIA_ANNONCE_EVENT && !evt.isRedacted() && evt.getSender() === me
     )
     .filter((evt) => {
-      const {fin} = evt.getContent() as Record<string, unknown>;
+      const { fin } = evt.getContent() as Record<string, unknown>;
       return typeof fin !== 'number' || fin <= now;
     })
     .forEach((evt) => {

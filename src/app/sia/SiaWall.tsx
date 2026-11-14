@@ -1,7 +1,11 @@
 // SIA: "Le Mur" page — publish, see and filter ephemeral announcements.
 import React, { FormEvent, useState } from 'react';
 import { Box, Button, Input, Scroll, Text, color, config, toRem } from 'folds';
+import { useNavigate } from 'react-router-dom';
 import { useMatrixClient } from '../hooks/useMatrixClient';
+import { openBulle } from './bulle';
+import { siaBullePath } from './paths';
+import { SiaBulleList } from './SiaBulleList';
 import { ROLE_LABELS, SiaProfile, SiaRole } from './profile';
 import { useSiaProfile } from './useSiaProfile';
 import { useWall } from './useWall';
@@ -113,9 +117,16 @@ function PublishForm({ roomId, profile, onDone }: PublishFormProps) {
   );
 }
 
-type AnnonceCardProps = { annonce: SiaAnnonce; now: number; isMine: boolean; onRemove: () => void };
+type AnnonceCardProps = {
+  annonce: SiaAnnonce;
+  now: number;
+  isMine: boolean;
+  onRemove: () => void;
+  onDispo?: () => void;
+  dispoBusy?: boolean;
+};
 
-function AnnonceCard({ annonce, now, isMine, onRemove }: AnnonceCardProps) {
+function AnnonceCard({ annonce, now, isMine, onRemove, onDispo, dispoBusy }: AnnonceCardProps) {
   const isPrestataire = annonce.role === 'prestataire';
   return (
     <Box direction="Column" gap="200" style={cardStyle}>
@@ -134,6 +145,13 @@ function AnnonceCard({ annonce, now, isMine, onRemove }: AnnonceCardProps) {
       <Text size="T300" priority="400">
         {[annonce.categorie, annonce.zone].filter(Boolean).join(' · ')}
       </Text>
+      {!isMine && onDispo && (
+        <Box>
+          <Button size="300" variant="Primary" onClick={onDispo} disabled={dispoBusy}>
+            <Text size="B300">{dispoBusy ? 'Ouverture...' : 'Tu es dispo ?'}</Text>
+          </Button>
+        </Box>
+      )}
       {isMine && (
         <Box>
           <Button size="300" variant="Secondary" fill="Soft" onClick={onRemove}>
@@ -153,6 +171,8 @@ export function SiaWall() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('tous');
   const [zoneFilter, setZoneFilter] = useState('');
   const me = mx.getUserId();
+  const navigate = useNavigate();
+  const [dispoBusy, setDispoBusy] = useState<string>();
 
   const zone = zoneFilter.trim().toLowerCase();
   const visible = annonces
@@ -161,6 +181,17 @@ export function SiaWall() {
       (a) =>
         !zone || a.zone.toLowerCase().includes(zone) || a.categorie.toLowerCase().includes(zone)
     );
+
+  const handleDispo = async (annonce: SiaAnnonce) => {
+    if (!roomId || !profile) return;
+    setDispoBusy(annonce.eventId);
+    try {
+      const bulleId = await openBulle(mx, roomId, annonce, profile);
+      navigate(siaBullePath(bulleId));
+    } catch {
+      setDispoBusy(undefined);
+    }
+  };
 
   const handleRemove = (eventId: string) => {
     if (roomId) mx.redactEvent(roomId, eventId).catch(() => undefined);
@@ -234,6 +265,8 @@ export function SiaWall() {
             />
           </Box>
 
+          <SiaBulleList />
+
           {error && <Text size="T300">{error}</Text>}
           {!error && !roomId && <Text priority="400">Connexion au Mur...</Text>}
           {roomId && visible.length === 0 && (
@@ -251,6 +284,8 @@ export function SiaWall() {
               now={now}
               isMine={a.sender === me}
               onRemove={() => handleRemove(a.eventId)}
+              onDispo={profile ? () => handleDispo(a) : undefined}
+              dispoBusy={dispoBusy === a.eventId}
             />
           ))}
         </Box>
