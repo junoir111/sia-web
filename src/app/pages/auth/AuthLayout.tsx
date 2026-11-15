@@ -20,7 +20,6 @@ import {
 } from '../../hooks/useClientConfig';
 import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { LOGIN_PATH, REGISTER_PATH, RESET_PASSWORD_PATH } from '../paths';
-import CinnySVG from '../../../../public/res/svg/cinny.svg';
 import { ServerPicker } from './ServerPicker';
 import { AutoDiscoveryAction, autoDiscovery } from '../../cs-api';
 import { SpecVersionsLoader } from '../../components/SpecVersionsLoader';
@@ -134,12 +133,12 @@ export function AuthLayout() {
         <Box direction="Column" className={css.AuthCard}>
           <Header className={css.AuthHeader} size="600" variant="Surface">
             <Box grow="Yes" direction="Row" gap="300" alignItems="Center">
-              <img className={css.AuthLogo} src={CinnySVG} alt="Cinny Logo" />
-              <Text size="H3">Cinny</Text>
+              <Text size="H3">SIA</Text>
             </Box>
           </Header>
           <Box className={css.AuthCardContent} direction="Column">
-            <Box direction="Column" gap="100">
+            {/* SIA: the app is locked on our server, no need to show or choose it. */}
+            <Box direction="Column" gap="100" style={{ display: 'none' }}>
               <Text as="label" size="L400" priority="300">
                 Homeserver
               </Text>
@@ -151,18 +150,18 @@ export function AuthLayout() {
               />
             </Box>
             {discoveryState.status === AsyncStatus.Loading && (
-              <AuthLayoutLoading message="Looking for homeserver..." />
+              <AuthLayoutLoading message="Connexion au serveur..." />
             )}
             {discoveryState.status === AsyncStatus.Error && (
-              <AuthLayoutError message="Failed to find homeserver." />
+              <AuthLayoutError message="Serveur injoignable. Vérifie ta connexion Internet et réessaie." />
             )}
             {autoDiscoveryError?.action === AutoDiscoveryAction.FAIL_PROMPT && (
               <AuthLayoutError
-                message={`Failed to connect. Homeserver configuration found with ${autoDiscoveryError.host} appears unusable.`}
+                message="Serveur injoignable. Vérifie ta connexion Internet et réessaie."
               />
             )}
             {autoDiscoveryError?.action === AutoDiscoveryAction.FAIL_ERROR && (
-              <AuthLayoutError message="Failed to connect. Homeserver configuration base_url appears invalid." />
+              <AuthLayoutError message="Serveur injoignable. Vérifie ta connexion Internet et réessaie." />
             )}
             {discoveryState.status === AsyncStatus.Success && autoDiscoveryInfo && (
               <AuthServerProvider value={discoveryState.data.serverName}>
@@ -171,7 +170,7 @@ export function AuthLayout() {
                     baseUrl={autoDiscoveryInfo['m.homeserver'].base_url}
                     fallback={() => (
                       <AuthLayoutLoading
-                        message={`Connecting to ${autoDiscoveryInfo['m.homeserver'].base_url}`}
+                        message="Connexion au serveur..."
                       />
                     )}
                     error={() => (

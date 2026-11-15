@@ -54,9 +54,9 @@ export const ROLE_LABELS: Record<SiaRole, { title: string; description: string }
   },
 };
 
-/** Pseudo proposed at first launch for accounts made by the invitation tool (« @puma-35:… » → « Puma-35 »). */
+/** Pseudo proposed at first launch: the identifier chosen at sign-up (« @puma-35:… » → « Puma-35 »). */
 export function suggestedPseudo(userId: string | null): string {
-  const match = /^@([a-z]+-\d{2}):/.exec(userId ?? '');
+  const match = /^@([^:]{1,30}):/.exec(userId ?? '');
   if (!match) return '';
   return match[1].charAt(0).toUpperCase() + match[1].slice(1);
 }

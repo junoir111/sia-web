@@ -38,7 +38,7 @@ function RegistrationTokenErrorDialog({
           <Text size="H4">{title}</Text>
           <Text>{message}</Text>
           <Text as="label" size="L400" style={{ paddingTop: config.space.S400 }}>
-            Registration Token
+            Code d'invitation
           </Text>
           <Input
             name="retryTokenInput"
@@ -51,12 +51,12 @@ function RegistrationTokenErrorDialog({
         </Box>
         <Button variant="Critical" type="submit">
           <Text as="span" size="B400">
-            Retry
+            Réessayer
           </Text>
         </Button>
         <Button variant="Critical" fill="None" outlined type="button" onClick={onCancel}>
           <Text as="span" size="B400">
-            Cancel
+            Annuler
           </Text>
         </Button>
       </Box>
@@ -93,8 +93,8 @@ export function RegistrationTokenStageDialog({
     return (
       <RegistrationTokenErrorDialog
         defaultToken={token}
-        title={errorCode}
-        message={error ?? 'Invalid registration token provided.'}
+        title="Code refusé"
+        message="Ce code d'invitation n'est pas bon. Vérifie-le auprès de la personne qui t'a invité."
         onRetry={handleSubmit}
         onCancel={onCancel}
       />
@@ -105,8 +105,8 @@ export function RegistrationTokenStageDialog({
     return (
       <RegistrationTokenErrorDialog
         defaultToken={token}
-        title="Registration Token"
-        message="Please submit registration token provided by you homeserver admin."
+        title="Code d'invitation"
+        message="Tape le code d'invitation donné par la personne qui t'a invité."
         onRetry={handleSubmit}
         onCancel={onCancel}
       />

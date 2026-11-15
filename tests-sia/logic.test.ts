@@ -106,8 +106,8 @@ test('only a provider can publish an availability status', () => {
   assert.equal(annonceFromContent({ ...valid, modalite: 'volant' }, NOW, NOW)?.modalite, '');
 });
 
-test('invited accounts get their generated pseudo proposed, others nothing', () => {
+test('the sign-up identifier is proposed as pseudo', () => {
   assert.equal(suggestedPseudo('@puma-35:sia.tail94dc60.ts.net'), 'Puma-35');
-  assert.equal(suggestedPseudo('@test-claude:sia.tail94dc60.ts.net'), '');
+  assert.equal(suggestedPseudo('@rudy:sia.tail94dc60.ts.net'), 'Rudy');
   assert.equal(suggestedPseudo(null), '');
 });

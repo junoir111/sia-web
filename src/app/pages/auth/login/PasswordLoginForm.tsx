@@ -18,7 +18,6 @@ import {
   config,
 } from 'folds';
 import FocusTrap from 'focus-trap-react';
-import { Link } from 'react-router-dom';
 import { MatrixError } from 'matrix-js-sdk';
 import { getMxIdLocalPart, getMxIdServer, isUserId } from '../../../utils/matrix';
 import { EMAIL_REGEX } from '../../../utils/regex';
@@ -35,7 +34,6 @@ import {
 } from './loginUtil';
 import { PasswordInput } from '../../../components/password-input';
 import { FieldError } from '../FiledError';
-import { getResetPasswordPath } from '../../pathUtils';
 import { stopPropagation } from '../../../utils/keyboard';
 
 function UsernameHint({ server }: { server: string }) {
@@ -200,7 +198,7 @@ export function PasswordLoginForm({ defaultUsername, defaultEmail }: PasswordLog
     <Box as="form" onSubmit={handleSubmit} direction="Inherit" gap="400">
       <Box direction="Column" gap="100">
         <Text as="label" size="L400" priority="300">
-          Username
+          Identifiant
         </Text>
         <Input
           defaultValue={defaultUsername ?? defaultEmail}
@@ -225,39 +223,34 @@ export function PasswordLoginForm({ defaultUsername, defaultEmail }: PasswordLog
       </Box>
       <Box direction="Column" gap="100">
         <Text as="label" size="L400" priority="300">
-          Password
+          Mot de passe
         </Text>
         <PasswordInput name="passwordInput" variant="Background" size="500" outlined required />
         <Box alignItems="Start" justifyContent="SpaceBetween" gap="200">
           {loginState.status === AsyncStatus.Error && (
             <>
               {loginState.error.errcode === LoginError.Forbidden && (
-                <FieldError message="Invalid Username or Password." />
+                <FieldError message="Identifiant ou mot de passe incorrect." />
               )}
               {loginState.error.errcode === LoginError.UserDeactivated && (
-                <FieldError message="This account has been deactivated." />
+                <FieldError message="Ce compte a été désactivé." />
               )}
               {loginState.error.errcode === LoginError.InvalidRequest && (
-                <FieldError message="Failed to login. Part of your request data is invalid." />
+                <FieldError message="Connexion impossible. Vérifie ce que tu as tapé." />
               )}
               {loginState.error.errcode === LoginError.RateLimited && (
-                <FieldError message="Failed to login. Your login request has been rate-limited by server, Please try after some time." />
+                <FieldError message="Trop d'essais. Attends quelques minutes puis réessaie." />
               )}
               {loginState.error.errcode === LoginError.Unknown && (
-                <FieldError message="Failed to login. Unknown reason." />
+                <FieldError message="Connexion impossible. Vérifie ta connexion Internet." />
               )}
             </>
           )}
-          <Box grow="Yes" shrink="No" justifyContent="End">
-            <Text as="span" size="T200" priority="400" align="Right">
-              <Link to={getResetPasswordPath(server)}>Forget Password?</Link>
-            </Text>
-          </Box>
         </Box>
       </Box>
       <Button type="submit" variant="Primary" size="500">
         <Text as="span" size="B500">
-          Login
+          Se connecter
         </Text>
       </Button>
 

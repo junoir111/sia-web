@@ -36,7 +36,7 @@ export function Register() {
   return (
     <Box direction="Column" gap="500">
       <Text size="H2" priority="400">
-        Register
+        Créer mon compte
       </Text>
       {registerFlows.status === RegisterFlowStatus.RegistrationDisabled && !sso && (
         <Text style={{ color: color.Critical.Main }} size="T300">
@@ -62,7 +62,7 @@ export function Register() {
             {(supportedFlows) =>
               supportedFlows.length === 0 ? (
                 <Text style={{ color: color.Critical.Main }} size="T300">
-                  This application does not support registration on this homeserver.
+                  L'inscription est fermée pour le moment.
                 </Text>
               ) : (
                 <PasswordRegisterForm
@@ -91,7 +91,7 @@ export function Register() {
         </>
       )}
       <Text align="Center">
-        Already have an account? <Link to={getLoginPath(server)}>Login</Link>
+        Déjà un compte ? <Link to={getLoginPath(server)}>Se connecter</Link>
       </Text>
     </Box>
   );

@@ -109,7 +109,7 @@ function RegisterUIAFlow({
         auth: authDict,
         password,
         username,
-        initial_device_display_name: 'Cinny Web',
+        initial_device_display_name: 'SIA',
       });
     },
     [onRegister, formData]
@@ -250,7 +250,7 @@ export function PasswordRegisterForm({
       auth: {
         session: authData.session,
       },
-      initial_device_display_name: 'Cinny Web',
+      initial_device_display_name: 'SIA',
     });
   };
 
@@ -259,7 +259,7 @@ export function PasswordRegisterForm({
       <Box as="form" onSubmit={handleSubmit} direction="Inherit" gap="400">
         <Box direction="Column" gap="100">
           <Text as="label" size="L400" priority="300">
-            Username
+            Identifiant (lettres minuscules, chiffres, tiret)
           </Text>
           <Input
             variant="Background"
@@ -270,13 +270,13 @@ export function PasswordRegisterForm({
             required
           />
           {registerError?.errcode === RegisterError.UserTaken && (
-            <FieldError message="This username is already taken." />
+            <FieldError message="Cet identifiant est déjà pris. Choisis-en un autre." />
           )}
           {registerError?.errcode === RegisterError.UserInvalid && (
-            <FieldError message="This username contains invalid characters." />
+            <FieldError message="Seulement des lettres minuscules sans accent, des chiffres et le tiret." />
           )}
           {registerError?.errcode === RegisterError.UserExclusive && (
-            <FieldError message="This username is reserved." />
+            <FieldError message="Cet identifiant est réservé. Choisis-en un autre." />
           )}
         </Box>
         <ConfirmPasswordMatch initialValue>
@@ -284,10 +284,11 @@ export function PasswordRegisterForm({
             <>
               <Box direction="Column" gap="100">
                 <Text as="label" size="L400" priority="300">
-                  Password
+                  Mot de passe (10 signes minimum)
                 </Text>
                 <PasswordInput
                   ref={passRef}
+                  minLength={10}
                   onChange={doMatch}
                   name="passwordInput"
                   variant="Background"
@@ -299,7 +300,7 @@ export function PasswordRegisterForm({
                   <FieldError
                     message={
                       registerError.data.error ??
-                      'Weak Password. Password rejected by server please choosing more strong Password.'
+                      'Mot de passe trop faible. Choisis-en un plus long.'
                     }
                   />
                 )}
@@ -307,14 +308,14 @@ export function PasswordRegisterForm({
                   <FieldError
                     message={
                       registerError.data.error ??
-                      'Short Password. Password rejected by server please choosing more long Password.'
+                      'Mot de passe trop court.'
                     }
                   />
                 )}
               </Box>
               <Box direction="Column" gap="100">
                 <Text as="label" size="L400" priority="300">
-                  Confirm Password
+                  Retape le mot de passe
                 </Text>
                 <PasswordInput
                   ref={confPassRef}
@@ -334,8 +335,8 @@ export function PasswordRegisterForm({
           <Box direction="Column" gap="100">
             <Text as="label" size="L400" priority="300">
               {requiredStageInFlows(uiaFlows, AuthType.RegistrationToken)
-                ? 'Registration Token'
-                : 'Registration Token (Optional)'}
+                ? "Code d'invitation"
+                : "Code d'invitation (facultatif)"}
             </Text>
             <Input
               variant="Background"
@@ -377,21 +378,21 @@ export function PasswordRegisterForm({
           </Box>
         )}
         {registerError?.errcode === RegisterError.RateLimited && (
-          <FieldError message="Failed to register. Your register request has been rate-limited by server, Please try after some time." />
+          <FieldError message="Trop d'essais. Attends quelques minutes puis réessaie." />
         )}
         {registerError?.errcode === RegisterError.Forbidden && (
-          <FieldError message="Failed to register. The homeserver does not permit registration." />
+          <FieldError message="L'inscription est fermée pour le moment." />
         )}
         {registerError?.errcode === RegisterError.InvalidRequest && (
-          <FieldError message="Failed to register. Invalid request." />
+          <FieldError message="Inscription impossible. Vérifie ce que tu as tapé." />
         )}
         {registerError?.errcode === RegisterError.Unknown && (
-          <FieldError message={registerError.data.error ?? 'Failed to register. Unknown Reason.'} />
+          <FieldError message={registerError.data.error ?? "Inscription impossible. Vérifie le code d'invitation et ta connexion."} />
         )}
         <span data-spacing-node />
         <Button variant="Primary" size="500" type="submit">
           <Text as="span" size="B500">
-            Register
+            Créer mon compte
           </Text>
         </Button>
       </Box>

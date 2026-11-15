@@ -41,7 +41,7 @@ export function UIAFlowOverlay({
             gap="200"
           >
             <Chip as="div" radii="Pill" outlined>
-              <Text as="span" size="T300">{`Step ${currentStep}/${stepCount}`}</Text>
+              <Text as="span" size="T300">{`Étape ${currentStep}/${stepCount}`}</Text>
             </Chip>
             <TooltipProvider
               tooltip={
