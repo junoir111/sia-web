@@ -5,6 +5,8 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "io.github.junoir111.sia"
+        // SIA: screen protection is on unless a test build sets -PsiaScreenProtection=false.
+        manifestPlaceholders = [siaScreenProtection: (project.findProperty("siaScreenProtection") ?: "true")]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
