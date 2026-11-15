@@ -16,6 +16,7 @@ import { getAppPathFromHref, getLoginPath, getOriginBaseUrl } from './pathUtils'
 import { ClientBindAtoms, ClientLayout, ClientRoot } from './client';
 import { SiaProfileGate } from '../sia/SiaProfileGate';
 import { SiaEphemeralSweeper } from '../sia/SiaEphemeralSweeper';
+import { SiaNotifier } from '../sia/SiaNotifier';
 import { SiaWall } from '../sia/SiaWall';
 import { SiaBulle } from '../sia/SiaBulle';
 import { SIA_BULLE_PATH, SIA_WALL_PATH } from '../sia/paths';
@@ -104,6 +105,7 @@ export const createRouter = (clientConfig: ClientConfig) => {
                           </ClientLayout>
                         </SiaProfileGate>
                         <SiaEphemeralSweeper />
+                        <SiaNotifier />
                         <CallStatusRenderer />
                       </CallEmbedProvider>
                       <UserRoomProfileRenderer />

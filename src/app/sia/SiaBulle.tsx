@@ -101,8 +101,11 @@ export function SiaBulle() {
 
   if (!room) {
     return (
-      <Box grow="Yes" alignItems="Center" justifyContent="Center" style={shell}>
+      <Box grow="Yes" direction="Column" alignItems="Center" justifyContent="Center" gap="400" style={shell}>
         <Text>Bulle introuvable ou déjà fermée.</Text>
+        <Button variant="Primary" onClick={() => navigate(SIA_WALL_PATH)}>
+          <Text size="B400">← Le Mur</Text>
+        </Button>
       </Box>
     );
   }
@@ -118,7 +121,16 @@ export function SiaBulle() {
           borderBottom: `1px solid ${color.Background.ContainerLine}`,
         }}
       >
-        <Box direction="Column">
+        <Box direction="Column" gap="100">
+          <Button
+            size="300"
+            variant="Secondary"
+            fill="Soft"
+            onClick={() => navigate(SIA_WALL_PATH)}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            <Text size="B300">← Le Mur</Text>
+          </Button>
           <Text size="T200" priority="400" style={{ letterSpacing: toRem(3) }}>
             BULLE CHIFFRÉE · 1 MIN
           </Text>

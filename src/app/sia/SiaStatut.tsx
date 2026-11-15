@@ -138,9 +138,19 @@ export function StatutCircles({ statuts, now, me, onDispo, dispoBusy }: StatutCi
             color: color.SurfaceVariant.OnContainer,
           }}
         >
-          <Text size="L400" style={{ color: color.Primary.Main }}>
-            PRESTATAIRE · {selected.pseudo}
-          </Text>
+          <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
+            <Text size="L400" style={{ color: color.Primary.Main }}>
+              PRESTATAIRE · {selected.pseudo}
+            </Text>
+            <Button
+              size="300"
+              variant="Secondary"
+              fill="Soft"
+              onClick={() => setSelectedId(undefined)}
+            >
+              <Text size="B300">✕ Fermer</Text>
+            </Button>
+          </Box>
           <Text size="H4">{selected.categorie || 'Service'}</Text>
           <Text size="T300">📍 {selected.zone}</Text>
           {selected.modalite && <Text size="T300">{MODALITE_LABELS[selected.modalite]}</Text>}
