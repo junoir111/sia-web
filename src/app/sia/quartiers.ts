@@ -1,0 +1,67 @@
+// SIA: zones of Libreville, sorted. Source: miboue.com (list of quartiers and PK 5-12).
+// Anyone can also write a zone that is not in the list ("Autre").
+export const QUARTIERS: readonly string[] = [
+  'Acae',
+  'Akébé Plaine',
+  'Akébé Ville',
+  'Akemindjogoni',
+  'Alibandeng',
+  'Ambowé',
+  'Avéa',
+  'Awendjé',
+  'Baraka',
+  'Batterie IV',
+  'Bas de Gué-Gué',
+  'Belair Manguier',
+  'Belair Tchad',
+  'Belle-Vue',
+  'Charbonnages',
+  'Cité Damas',
+  'Cité Mebiame',
+  'Cocotiers',
+  'Cinq Palmiers',
+  'Diba-Diba',
+  'Derrière le Tribunal',
+  'Gué-Gué',
+  'Haut de Gué-Gué',
+  'Kiliba',
+  'Kinguélé',
+  'Lac Bleu',
+  'Lalala',
+  'London',
+  'Louis',
+  'Mindoubé',
+  'Mikolongo',
+  'Mont-Bouët',
+  'Nkembo',
+  'Nombakélé',
+  'Nzeng-Ayong',
+  'Okala',
+  'Oloumi',
+  'Owendo',
+  'Peyrie',
+  'Petit Paris',
+  'Plaine Niger',
+  'Plein Ciel',
+  'Pompidou',
+  'Rio',
+  'Sibang',
+  'Tropicana',
+  'Centre-Ville',
+  'PK 5',
+  'PK 6',
+  'PK 7',
+  'PK 8',
+  'PK 9',
+  'PK 10',
+  'PK 11',
+  'PK 12',
+].sort((a, b) => a.localeCompare(b, 'fr'));
+
+export const AUTRE_QUARTIER = 'Autre';
+
+/** The zone as typed, if it is "Autre", otherwise the list choice. Trimmed and cut to 40 letters. */
+export function resolveZone(choice: string, typed: string): string {
+  const value = choice === AUTRE_QUARTIER ? typed : choice;
+  return value.trim().slice(0, 40);
+}

@@ -89,3 +89,10 @@ test('a profile needs a known role and a pseudo', () => {
   assert.equal(parseSiaProfile({ role: 'client', pseudo: '' }), undefined);
   assert.equal(parseSiaProfile(undefined), undefined);
 });
+
+test('a zone from the list is kept, and "Autre" takes the typed zone', async () => {
+  const { resolveZone, AUTRE_QUARTIER } = await import('../src/app/sia/quartiers.ts');
+  assert.equal(resolveZone('Akébé Plaine', 'ignoré'), 'Akébé Plaine');
+  assert.equal(resolveZone(AUTRE_QUARTIER, '  Mon quartier  '), 'Mon quartier');
+  assert.equal(resolveZone(AUTRE_QUARTIER, ''), '');
+});

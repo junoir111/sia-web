@@ -8,6 +8,7 @@ import { siaBullePath } from './paths';
 import { SiaBulleList } from './SiaBulleList';
 import { ROLE_LABELS, SiaProfile, SiaRole } from './profile';
 import { useSiaProfile } from './useSiaProfile';
+import { AUTRE_QUARTIER, QUARTIERS, resolveZone } from './quartiers';
 import { useWall } from './useWall';
 import { DURATIONS_HOURS, formatRemaining, publishAnnonce, SiaAnnonce } from './wall';
 
@@ -20,6 +21,49 @@ const cardStyle = {
   borderRadius: config.radii.R400,
   padding: config.space.S400,
 };
+
+function ZoneField({ defaultZone }: { defaultZone: string }) {
+  const known = QUARTIERS.includes(defaultZone);
+  const [choice, setChoice] = useState(known ? defaultZone : AUTRE_QUARTIER);
+  return (
+    <Box gap="200" style={{ flexGrow: 1, minWidth: 0 }} wrap="Wrap">
+      <select
+        name="zone"
+        value={choice}
+        onChange={(e) => setChoice(e.currentTarget.value)}
+        style={{
+          flexGrow: 1,
+          minWidth: toRem(140),
+          height: toRem(36),
+          padding: `0 ${config.space.S200}`,
+          borderRadius: config.radii.R300,
+          border: `1px solid ${color.Background.ContainerLine}`,
+          backgroundColor: color.Background.Container,
+          color: color.Background.OnContainer,
+          fontFamily: 'inherit',
+        }}
+      >
+        {QUARTIERS.map((q) => (
+          <option key={q} value={q}>
+            {q}
+          </option>
+        ))}
+        <option value={AUTRE_QUARTIER}>Autre (écrire le quartier)</option>
+      </select>
+      {choice === AUTRE_QUARTIER && (
+        <Input
+          variant="Background"
+          outlined
+          name="zoneAutre"
+          maxLength={40}
+          defaultValue={known ? '' : defaultZone}
+          placeholder="Ton quartier"
+          style={{ flexGrow: 1, minWidth: toRem(140) }}
+        />
+      )}
+    </Box>
+  );
+}
 
 type PublishFormProps = { roomId: string; profile: SiaProfile; onDone: () => void };
 
@@ -44,7 +88,7 @@ function PublishForm({ roomId, profile, onDone }: PublishFormProps) {
       await publishAnnonce(mx, roomId, profile, {
         texte,
         categorie: String(form.get('categorie') ?? ''),
-        zone: String(form.get('zone') ?? ''),
+        zone: resolveZone(String(form.get('zone') ?? ''), String(form.get('zoneAutre') ?? '')),
         dureeHeures: duree,
       });
       onDone();
@@ -78,15 +122,7 @@ function PublishForm({ roomId, profile, onDone }: PublishFormProps) {
             placeholder="Catégorie"
             style={{ flexGrow: 1, minWidth: 0 }}
           />
-          <Input
-            variant="Background"
-            outlined
-            name="zone"
-            maxLength={60}
-            defaultValue={profile.zone}
-            placeholder="Zone"
-            style={{ flexGrow: 1, minWidth: 0 }}
-          />
+          <ZoneField defaultZone={profile.zone} />
         </Box>
         <Box gap="200" alignItems="Center" wrap="Wrap">
           <Text size="T300">Visible pendant :</Text>
