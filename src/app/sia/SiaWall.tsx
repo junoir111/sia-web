@@ -9,6 +9,7 @@ import { SiaBulleList } from './SiaBulleList';
 import { ROLE_LABELS, SiaProfile, SiaRole } from './profile';
 import { useSiaProfile } from './useSiaProfile';
 import { AUTRE_QUARTIER, QUARTIERS, resolveZone } from './quartiers';
+import { StatutCircles, StatutToggle } from './SiaStatut';
 import { useWall } from './useWall';
 import { DURATIONS_HOURS, formatRemaining, publishAnnonce, SiaAnnonce } from './wall';
 
@@ -218,6 +219,9 @@ export function SiaWall() {
         !zone || a.zone.toLowerCase().includes(zone) || a.categorie.toLowerCase().includes(zone)
     );
 
+  const statuts = visible.filter((a) => a.statut);
+  const cards = visible.filter((a) => !a.statut);
+
   const handleDispo = async (annonce: SiaAnnonce) => {
     if (!roomId || !profile) return;
     setDispoBusy(annonce.eventId);
@@ -301,7 +305,19 @@ export function SiaWall() {
             />
           </Box>
 
+          {profile?.role === 'prestataire' && roomId && (
+            <StatutToggle roomId={roomId} profile={profile} annonces={annonces} />
+          )}
+
           <SiaBulleList />
+
+          <StatutCircles
+            statuts={statuts}
+            now={now}
+            me={me}
+            onDispo={profile ? handleDispo : undefined}
+            dispoBusy={dispoBusy}
+          />
 
           {error && <Text size="T300">{error}</Text>}
           {!error && !roomId && <Text priority="400">Connexion au Mur...</Text>}
@@ -313,7 +329,7 @@ export function SiaWall() {
               </Text>
             </Box>
           )}
-          {visible.map((a) => (
+          {cards.map((a) => (
             <AnnonceCard
               key={a.eventId}
               annonce={a}

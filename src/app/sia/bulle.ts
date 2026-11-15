@@ -94,7 +94,13 @@ export async function openBulle(
       { type: SIA_BULLE_STATE, state_key: '', content: state },
     ],
   });
-  await mx.invite(roomId, annonce.sender, `Tu es dispo ? — ${annonce.texte.slice(0, 80)}`);
+  // The author sees who asks and from which zone before accepting.
+  const from = `${ROLE_LABELS[profile.role].title} depuis ${profile.zone || 'zone inconnue'}`;
+  await mx.invite(
+    roomId,
+    annonce.sender,
+    `${from} — Tu es dispo ? (${annonce.texte.slice(0, 60)})`
+  );
   return roomId;
 }
 

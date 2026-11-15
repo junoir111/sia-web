@@ -4,11 +4,23 @@ export const SIA_PROFILE_EVENT = 'io.sia.profile';
 
 export type SiaRole = 'prestataire' | 'client';
 
+export type SiaModalite = 'recoit' | 'deplace' | 'deux';
+
+export const MODALITE_LABELS: Record<SiaModalite, string> = {
+  recoit: '🏠 Reçoit (maison / atelier)',
+  deplace: '🛵 Se déplace',
+  deux: '🔄 Reçoit et se déplace',
+};
+
+export const parseModalite = (value: unknown): SiaModalite =>
+  value === 'recoit' || value === 'deplace' ? value : 'deux';
+
 export type SiaProfile = {
   role: SiaRole;
   pseudo: string;
   metier: string;
   zone: string;
+  modalite: SiaModalite;
 };
 
 const MAX_FIELD_LENGTH = 60;
@@ -26,6 +38,7 @@ export function parseSiaProfile(content: unknown): SiaProfile | undefined {
     pseudo: cleanField(data.pseudo),
     metier: cleanField(data.metier),
     zone: cleanField(data.zone),
+    modalite: parseModalite(data.modalite),
   };
   return profile.pseudo ? profile : undefined;
 }

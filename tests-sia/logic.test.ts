@@ -83,6 +83,7 @@ test('a profile needs a known role and a pseudo', () => {
       pseudo: 'Delta-4',
       metier: 'Plombier',
       zone: 'PK12',
+      modalite: 'deux',
     }
   );
   assert.equal(parseSiaProfile({ role: 'espion', pseudo: 'x' }), undefined);
@@ -95,4 +96,12 @@ test('a zone from the list is kept, and "Autre" takes the typed zone', async () 
   assert.equal(resolveZone('Akébé Plaine', 'ignoré'), 'Akébé Plaine');
   assert.equal(resolveZone(AUTRE_QUARTIER, '  Mon quartier  '), 'Mon quartier');
   assert.equal(resolveZone(AUTRE_QUARTIER, ''), '');
+});
+
+test('only a provider can publish an availability status', () => {
+  const base = { ...valid, statut: true, modalite: 'deplace' };
+  assert.equal(annonceFromContent({ ...base, role: 'prestataire' }, NOW, NOW)?.statut, true);
+  assert.equal(annonceFromContent({ ...base, role: 'prestataire' }, NOW, NOW)?.modalite, 'deplace');
+  assert.equal(annonceFromContent(base, NOW, NOW)?.statut, false);
+  assert.equal(annonceFromContent({ ...valid, modalite: 'volant' }, NOW, NOW)?.modalite, '');
 });

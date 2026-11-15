@@ -1,7 +1,7 @@
 // SIA: "Le Mur" — one shared room where ephemeral announcements are posted.
 import { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
 import { SiaProfile } from './profile';
-import { AnnonceFields, annonceFromContent, cleanText } from './wallLogic';
+import { AnnonceFields, annonceFromContent, cleanText, MAX_ANNONCE_LIFETIME_MS } from './wallLogic';
 
 export { formatRemaining } from './wallLogic';
 
@@ -62,6 +62,34 @@ export async function publishAnnonce(
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await mx.sendEvent(roomId, SIA_ANNONCE_EVENT as any, content as any);
+}
+
+/** "Disponible": shows the provider's status circle on the wall, for 24 h at most. */
+export async function publishStatut(
+  mx: MatrixClient,
+  roomId: string,
+  profile: SiaProfile
+): Promise<void> {
+  const content = {
+    role: profile.role,
+    pseudo: profile.pseudo,
+    categorie: cleanText(profile.metier, 60),
+    zone: cleanText(profile.zone, 60),
+    texte: cleanText(profile.metier, 280) || 'Disponible',
+    fin: Date.now() + MAX_ANNONCE_LIFETIME_MS,
+    statut: true,
+    modalite: profile.modalite,
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await mx.sendEvent(roomId, SIA_ANNONCE_EVENT as any, content as any);
+}
+
+/** "Pas disponible": removes our status circle(s) from the wall and from the server. */
+export function removeOwnStatuts(mx: MatrixClient, roomId: string, annonces: SiaAnnonce[]): void {
+  const me = mx.getUserId();
+  annonces
+    .filter((a) => a.statut && a.sender === me)
+    .forEach((a) => mx.redactEvent(roomId, a.eventId).catch(() => undefined));
 }
 
 const cleanupRequested = new Set<string>();

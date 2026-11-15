@@ -2,7 +2,14 @@
 import React, { FormEvent, useState } from 'react';
 import { Box, Button, Input, Text, color, config, toRem } from 'folds';
 import { useMatrixClient } from '../hooks/useMatrixClient';
-import { ROLE_LABELS, SIA_PROFILE_EVENT, SiaProfile, SiaRole } from './profile';
+import {
+  MODALITE_LABELS,
+  ROLE_LABELS,
+  SIA_PROFILE_EVENT,
+  SiaModalite,
+  SiaProfile,
+  SiaRole,
+} from './profile';
 
 type RoleCardProps = {
   siaRole: SiaRole;
@@ -42,6 +49,7 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
   const isPrestataire = role === 'prestataire';
+  const [modalite, setModalite] = useState<SiaModalite>('deux');
 
   const handleSubmit = async (evt: FormEvent<HTMLFormElement>) => {
     evt.preventDefault();
@@ -51,6 +59,7 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
       pseudo: String(form.get('pseudo') ?? '').trim(),
       metier: String(form.get('metier') ?? '').trim(),
       zone: String(form.get('zone') ?? '').trim(),
+      modalite,
     };
     if (!profile.pseudo || !profile.zone) {
       setError('Le pseudo et la zone sont obligatoires.');
@@ -110,6 +119,25 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
             required
           />
         </Box>
+        {isPrestataire && (
+          <Box direction="Column" gap="100">
+            <Text size="L400">Comment tu travailles</Text>
+            <Box gap="200" wrap="Wrap">
+              {(Object.keys(MODALITE_LABELS) as SiaModalite[]).map((m) => (
+                <Button
+                  key={m}
+                  type="button"
+                  size="300"
+                  variant={modalite === m ? 'Primary' : 'Secondary'}
+                  fill={modalite === m ? 'Solid' : 'Soft'}
+                  onClick={() => setModalite(m)}
+                >
+                  <Text size="B300">{MODALITE_LABELS[m]}</Text>
+                </Button>
+              ))}
+            </Box>
+          </Box>
+        )}
         {error && (
           <Text size="T300" style={{ color: 'var(--sia-critical, #E69D9D)' }}>
             {error}

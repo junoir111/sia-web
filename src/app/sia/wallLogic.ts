@@ -10,6 +10,9 @@ export type AnnonceFields = {
   zone: string;
   texte: string;
   fin: number;
+  /** true = availability status of a provider (shown as a circle), false = ordinary announcement. */
+  statut: boolean;
+  modalite: 'recoit' | 'deplace' | 'deux' | '';
 };
 
 export const cleanText = (value: unknown, max: number): string =>
@@ -39,6 +42,11 @@ export function annonceFromContent(
     zone: cleanText(data.zone, MAX_FIELD_LENGTH),
     texte,
     fin,
+    statut: data.statut === true && data.role === 'prestataire',
+    modalite:
+      data.modalite === 'recoit' || data.modalite === 'deplace' || data.modalite === 'deux'
+        ? data.modalite
+        : '',
   };
 }
 
