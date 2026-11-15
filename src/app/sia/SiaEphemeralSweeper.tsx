@@ -1,5 +1,5 @@
 // SIA: runs for the whole app. Times every bubble message from its live arrival on this device
-// and deletes it from the server once its 5 s are over, whoever wrote it and whatever screen is open.
+// and deletes it from the server once its minute is over, whoever wrote it and whatever screen is open.
 import { useEffect } from 'react';
 import { IRoomTimelineData, MatrixEvent, Room, RoomEvent } from 'matrix-js-sdk';
 import { useMatrixClient } from '../hooks/useMatrixClient';

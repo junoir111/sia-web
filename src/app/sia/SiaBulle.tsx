@@ -1,4 +1,4 @@
-// SIA: the bubble screen — every message disappears 5 s after it appears, on both sides.
+// SIA: the bubble screen — every message disappears 1 minute after it appears, on both sides.
 import React, { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MatrixEventEvent, RoomEvent, RoomStateEvent } from 'matrix-js-sdk';
@@ -52,7 +52,7 @@ export function SiaBulle() {
   const aliasOf = (userId: string) => state?.aliases[userId] ?? 'Inconnu';
   const events = room?.getLiveTimeline().getEvents() ?? [];
 
-  // Each message is shown for 5 s from its arrival on this device (timed by SiaEphemeralSweeper,
+  // Each message is shown for 1 minute from its arrival on this device (timed by SiaEphemeralSweeper,
   // which also deletes it from the server). Anything not seen arriving live stays hidden.
   const bubbles: Bubble[] = [];
   events.filter(isBulleMessage).forEach((evt) => {
@@ -120,7 +120,7 @@ export function SiaBulle() {
       >
         <Box direction="Column">
           <Text size="T200" priority="400" style={{ letterSpacing: toRem(3) }}>
-            BULLE CHIFFRÉE · 5 S
+            BULLE CHIFFRÉE · 1 MIN
           </Text>
           <Text size="H5">{otherLabel}</Text>
           <Text size="T200" priority="400">
@@ -163,7 +163,7 @@ export function SiaBulle() {
         )}
         {!closed && !waiting && bubbles.length === 0 && (
           <Text size="T300" priority="400" align="Center">
-            Ici, chaque message disparaît 5 secondes après s&apos;être affiché. Sois réactif.
+            Ici, chaque message disparaît 1 minute après s&apos;être affiché.
           </Text>
         )}
         {bubbles.map((b) => {
@@ -209,7 +209,7 @@ export function SiaBulle() {
               autoComplete="off"
               maxLength={2000}
               disabled={waiting}
-              placeholder={waiting ? 'En attente...' : "Écris... (s'efface en 5 s)"}
+              placeholder={waiting ? 'En attente...' : "Écris... (s'efface en 1 min)"}
               style={{ flexGrow: 1 }}
               autoFocus
             />

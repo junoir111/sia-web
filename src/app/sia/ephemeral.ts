@@ -1,7 +1,7 @@
 // SIA: timing rule of ephemeral messages. Pure logic, no imports (unit-tested).
-// A message lives 5 s counted from the moment THIS device first saw it arrive live,
+// A message lives 1 minute counted from the moment THIS device first saw it arrive live,
 // so slow networks and wrong clocks can never make it invisible or keep it longer.
-export const MESSAGE_LIFETIME_MS = 5_000;
+export const MESSAGE_LIFETIME_MS = 60_000;
 
 /** `seenAt` undefined or 0 = not seen arriving live (old history): treated as already expired. */
 export function remainingMs(seenAt: number | undefined, now: number): number {

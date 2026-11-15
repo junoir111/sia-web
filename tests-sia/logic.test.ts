@@ -8,14 +8,14 @@ import { parseSiaProfile, suggestedPseudo } from '../src/app/sia/profile.ts';
 const HOUR = 3600 * 1000;
 const NOW = 1_800_000_000_000;
 
-test('a message just seen has its full 5 seconds', () => {
+test('a message just seen has its full minute', () => {
   assert.equal(remainingMs(NOW, NOW), MESSAGE_LIFETIME_MS);
   assert.equal(isExpired(NOW, NOW), false);
 });
 
-test('a message is expired exactly 5 seconds after it was seen', () => {
-  assert.equal(isExpired(NOW, NOW + 4_999), false);
-  assert.equal(isExpired(NOW, NOW + 5_000), true);
+test('a message is expired exactly 1 minute after it was seen', () => {
+  assert.equal(isExpired(NOW, NOW + 59_999), false);
+  assert.equal(isExpired(NOW, NOW + 60_000), true);
 });
 
 test('a message never seen arriving live is expired', () => {
@@ -23,8 +23,8 @@ test('a message never seen arriving live is expired', () => {
   assert.equal(isExpired(0, NOW), true);
 });
 
-test('a clock going backwards never gives more than 5 seconds', () => {
-  assert.equal(remainingMs(NOW, NOW - 60_000), MESSAGE_LIFETIME_MS);
+test('a clock going backwards never gives more than 1 minute', () => {
+  assert.equal(remainingMs(NOW, NOW - 600_000), MESSAGE_LIFETIME_MS);
 });
 
 const valid = {
