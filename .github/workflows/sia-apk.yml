@@ -1,0 +1,46 @@
+name: SIA APK (test)
+
+# Builds the Android test APK. Runs on the sia branch and on tags essai-*.
+on:
+  push:
+    branches: [sia]
+    tags: ['essai-*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: npx cap sync android
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sia-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+      - name: Publish download page for tags
+        if: startsWith(github.ref, 'refs/tags/essai-')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk "SIA-${GITHUB_REF_NAME}.apk"
+          gh release create "$GITHUB_REF_NAME" "SIA-${GITHUB_REF_NAME}.apk" --prerelease \
+            --title "SIA $GITHUB_REF_NAME (test)" \
+            --notes "Version d'essai, pour test personnel uniquement. Signée avec la clé de test publique."

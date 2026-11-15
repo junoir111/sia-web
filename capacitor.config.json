@@ -1,0 +1,12 @@
+{
+  "appId": "io.github.junoir111.sia",
+  "appName": "SIA",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
