@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MESSAGE_LIFETIME_MS, isExpired, remainingMs } from '../src/app/sia/ephemeral.ts';
 import { annonceFromContent, formatRemaining } from '../src/app/sia/wallLogic.ts';
-import { parseSiaProfile } from '../src/app/sia/profile.ts';
+import { parseSiaProfile, suggestedPseudo } from '../src/app/sia/profile.ts';
 
 const HOUR = 3600 * 1000;
 const NOW = 1_800_000_000_000;
@@ -104,4 +104,10 @@ test('only a provider can publish an availability status', () => {
   assert.equal(annonceFromContent({ ...base, role: 'prestataire' }, NOW, NOW)?.modalite, 'deplace');
   assert.equal(annonceFromContent(base, NOW, NOW)?.statut, false);
   assert.equal(annonceFromContent({ ...valid, modalite: 'volant' }, NOW, NOW)?.modalite, '');
+});
+
+test('invited accounts get their generated pseudo proposed, others nothing', () => {
+  assert.equal(suggestedPseudo('@puma-35:sia.tail94dc60.ts.net'), 'Puma-35');
+  assert.equal(suggestedPseudo('@test-claude:sia.tail94dc60.ts.net'), '');
+  assert.equal(suggestedPseudo(null), '');
 });

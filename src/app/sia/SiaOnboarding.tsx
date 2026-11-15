@@ -9,6 +9,7 @@ import {
   SiaModalite,
   SiaProfile,
   SiaRole,
+  suggestedPseudo,
 } from './profile';
 
 type RoleCardProps = {
@@ -91,6 +92,7 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
             outlined
             name="pseudo"
             maxLength={30}
+            defaultValue={suggestedPseudo(mx.getUserId())}
             placeholder="Delta-4"
             autoFocus
             required
