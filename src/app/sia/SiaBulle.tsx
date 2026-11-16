@@ -296,6 +296,28 @@ export function SiaBulle() {
         )}
       </Box>
 
+      {state?.demande && (
+        <Box
+          direction="Column"
+          gap="100"
+          style={{
+            margin: `${config.space.S300} ${config.space.S400} 0`,
+            padding: config.space.S300,
+            borderRadius: config.radii.R400,
+            border: `1px solid ${color.Background.ContainerLine}`,
+          }}
+        >
+          <Text size="L400" style={{ color: color.Primary.Main }}>
+            LA DEMANDE
+          </Text>
+          <Text size="T300">{state.demande.texte}</Text>
+          <Text size="T300" priority="400">
+            Position : {state.demande.zone || 'non précisée'}
+            {state.demande.budget > 0 ? ` · Budget : ${formatPrix(state.demande.budget)}` : ''}
+          </Text>
+        </Box>
+      )}
+
       {otherFiche?.role === 'prestataire' && (
         <Box style={{ padding: `${config.space.S300} ${config.space.S400} 0` }}>
           <FichePrestataire fiche={otherFiche} flou={flou} onToggle={() => setFlou((v) => !v)} />

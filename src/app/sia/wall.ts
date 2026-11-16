@@ -1,7 +1,13 @@
 // SIA: "Le Mur" — one shared room where ephemeral announcements are posted.
 import { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
 import { SiaProfile } from './profile';
-import { AnnonceFields, annonceFromContent, cleanText, MAX_ANNONCE_LIFETIME_MS } from './wallLogic';
+import {
+  AnnonceFields,
+  annonceFromContent,
+  cleanBudget,
+  cleanText,
+  MAX_ANNONCE_LIFETIME_MS,
+} from './wallLogic';
 
 export { formatRemaining } from './wallLogic';
 
@@ -44,6 +50,8 @@ export type NewAnnonce = {
   categorie: string;
   zone: string;
   dureeHeures: number;
+  /** Client request: the amount the client can pay (FCFA), 0 = not given. */
+  budget: number;
 };
 
 export async function publishAnnonce(
@@ -59,6 +67,7 @@ export async function publishAnnonce(
     zone: cleanText(annonce.zone, 60),
     texte: cleanText(annonce.texte, 280),
     fin: Date.now() + annonce.dureeHeures * 3600 * 1000,
+    ...(profile.role === 'client' ? { budget: cleanBudget(annonce.budget) } : {}),
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await mx.sendEvent(roomId, SIA_ANNONCE_EVENT as any, content as any);

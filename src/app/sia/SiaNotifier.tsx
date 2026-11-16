@@ -1,10 +1,18 @@
-// SIA: discreet alert on an incoming signal (a bubble message, or a "Tu es dispo ?" invite).
+// SIA: discreet alert on an incoming signal (a bubble message, a "Tu es dispo ?" invite or an offer,
+// or — for a provider — a new client request on the wall).
 // Vibration + a soft synthesized "tap". No text, no pop-up: the signal only; the detail waits in the app.
 // Works while the app is open. App closed / in background needs push (Firebase or ntfy, phase 6.3).
 import { useEffect, useRef } from 'react';
 import { IRoomTimelineData, MatrixEvent, Room, RoomEvent } from 'matrix-js-sdk';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { isBulleMessage, isBulleRoom } from './bulle';
+import { parseSiaProfile, SIA_PROFILE_EVENT } from './profile';
+import { findWallRoomId, parseAnnonce } from './wall';
+
+const isNewClientRequest = (evt: MatrixEvent): boolean => {
+  const annonce = parseAnnonce(evt, Date.now());
+  return !!annonce && annonce.role === 'client' && !annonce.statut;
+};
 
 const VIBRATION_PATTERN = [100, 50, 100];
 // Ignore the burst of history/sync that fires right after mount, so old messages do not buzz.
@@ -62,9 +70,16 @@ export function SiaNotifier() {
       data: IRoomTimelineData
     ) => {
       if (Date.now() < readyAt.current || removed || !data?.liveEvent) return;
-      if (!room || !isBulleRoom(room) || !isBulleMessage(evt)) return;
-      if (evt.getSender() === me) return;
-      signal();
+      if (!room || evt.getSender() === me) return;
+      if (isBulleRoom(room) && isBulleMessage(evt)) {
+        signal();
+        return;
+      }
+      // A new client request on the wall: every provider with the app open is alerted.
+      if (room.roomId === findWallRoomId(mx) && isNewClientRequest(evt)) {
+        const profile = parseSiaProfile(mx.getAccountData(SIA_PROFILE_EVENT)?.getContent());
+        if (profile?.role === 'prestataire') signal();
+      }
     };
 
     const onMembership = (room: Room, membership: string, prevMembership?: string) => {

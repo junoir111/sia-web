@@ -160,3 +160,47 @@ test('the sign-up identifier is proposed as pseudo', () => {
   assert.equal(suggestedPseudo('@rudy:sia.tail94dc60.ts.net'), 'Rudy');
   assert.equal(suggestedPseudo(null), '');
 });
+
+// --- Client requests: budget and offers ---
+import { cleanBudget } from '../src/app/sia/wallLogic.ts';
+import { parseReason, siblingOffers, withRef } from '../src/app/sia/offres.ts';
+
+test('a client request keeps its budget, a provider announcement never has one', () => {
+  assert.equal(annonceFromContent({ ...valid, budget: 25000 }, NOW, NOW)?.budget, 25000);
+  assert.equal(
+    annonceFromContent({ ...valid, role: 'prestataire', budget: 25000 }, NOW, NOW)?.budget,
+    0
+  );
+  assert.equal(annonceFromContent(valid, NOW, NOW)?.budget, 0);
+});
+
+test('a budget is a whole positive amount, anything else becomes 0', () => {
+  assert.equal(cleanBudget(5000.9), 5000);
+  assert.equal(cleanBudget('25000'), 25000);
+  assert.equal(cleanBudget(-3), 0);
+  assert.equal(cleanBudget('abc'), 0);
+  assert.equal(cleanBudget(Infinity), 0);
+  assert.equal(cleanBudget(1e12), 100_000_000);
+});
+
+test('an offer reason hides its request reference from the text shown', () => {
+  const reason = withRef('Prestataire (Plombier) depuis Akanda accepte ta demande', '$abc:sia');
+  assert.deepEqual(parseReason(reason), {
+    text: 'Prestataire (Plombier) depuis Akanda accepte ta demande',
+    ref: '$abc:sia',
+  });
+  assert.deepEqual(parseReason('Tu es dispo ?'), { text: 'Tu es dispo ?' });
+  assert.deepEqual(parseReason(42), { text: '' });
+});
+
+test('choosing one offer refuses only the other offers on the same request', () => {
+  const invitations = [
+    { roomId: '!a', reason: withRef('A', '$req1') },
+    { roomId: '!b', reason: withRef('B', '$req1') },
+    { roomId: '!c', reason: withRef('C', '$req2') },
+    { roomId: '!d', reason: 'Tu es dispo ?' },
+  ];
+  assert.deepEqual(siblingOffers(invitations, '!a'), ['!b']);
+  assert.deepEqual(siblingOffers(invitations, '!c'), []);
+  assert.deepEqual(siblingOffers(invitations, '!d'), []);
+});

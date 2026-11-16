@@ -10,6 +10,8 @@ import {
   parseFiche,
 } from './profile';
 import { findWallRoomId, SiaAnnonce } from './wall';
+import { cleanBudget, cleanText } from './wallLogic';
+import { withRef } from './offres';
 import { encryptFile, uploadContent } from '../utils/matrix';
 import { loadLocalPhotos } from './photos';
 
@@ -34,11 +36,23 @@ const CODE_WORDS = [
   'Zulu',
 ];
 
+/** The client's request a bubble answers: shown to both sides (where, what, how much). */
+export type BulleDemande = { texte: string; zone: string; budget: number };
+
 export type BulleState = {
   annonceEventId: string;
   wallRoomId: string;
   aliases: Record<string, string>;
+  demande?: BulleDemande;
 };
+
+function parseDemande(value: unknown): BulleDemande | undefined {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const d = value as Record<string, unknown>;
+  const texte = cleanText(d.texte, 280);
+  if (!texte) return undefined;
+  return { texte, zone: cleanText(d.zone, 60), budget: cleanBudget(d.budget) };
+}
 
 const randomInt = (max: number): number => {
   const buf = new Uint32Array(1);
@@ -62,7 +76,12 @@ export function parseBulleState(content: unknown): BulleState | undefined {
       if (typeof alias === 'string') aliases[userId] = alias.slice(0, 40);
     });
   }
-  return { annonceEventId: data.annonceEventId, wallRoomId: data.wallRoomId, aliases };
+  return {
+    annonceEventId: data.annonceEventId,
+    wallRoomId: data.wallRoomId,
+    aliases,
+    demande: parseDemande(data.demande),
+  };
 }
 
 export function getBulleState(room: Room): BulleState | undefined {
@@ -133,7 +152,22 @@ export function getOtherFiche(room: Room, me: string | null): SiaFiche | undefin
   return undefined;
 }
 
-/** "Tu es dispo ?": opens an encrypted bubble with the author of the announcement and invites them. */
+/** What the author of the announcement reads before accepting: who asks, from where. */
+function invitationText(annonce: SiaAnnonce, profile: SiaProfile): string {
+  const zone = profile.zone || 'zone inconnue';
+  if (annonce.role === 'client') {
+    // A provider answers a client's request: the client will choose among all offers.
+    const metier = profile.metier ? ` (${profile.metier})` : '';
+    return withRef(`Prestataire${metier} depuis ${zone} accepte ta demande`, annonce.eventId);
+  }
+  const from = `${ROLE_LABELS[profile.role].title} depuis ${zone}`;
+  return `${from} — Tu es dispo ? (${annonce.texte.slice(0, 60)})`;
+}
+
+/**
+ * "Tu es dispo ?" on a provider's announcement, or "J'accepte" on a client's request:
+ * opens an encrypted bubble with the author of the announcement and invites them.
+ */
 export async function openBulle(
   mx: MatrixClient,
   wallRoomId: string,
@@ -146,6 +180,9 @@ export async function openBulle(
     annonceEventId: annonce.eventId,
     wallRoomId,
     aliases: { [me]: makeAlias(profile.role), [annonce.sender]: makeAlias(annonce.role) },
+    ...(annonce.role === 'client'
+      ? { demande: { texte: annonce.texte, zone: annonce.zone, budget: annonce.budget } }
+      : {}),
   };
   const { room_id: roomId } = await mx.createRoom({
     name: BULLE_ROOM_NAME,
@@ -164,13 +201,7 @@ export async function openBulle(
       { type: SIA_BULLE_STATE, state_key: '', content: state },
     ],
   });
-  // The author sees who asks and from which zone before accepting.
-  const from = `${ROLE_LABELS[profile.role].title} depuis ${profile.zone || 'zone inconnue'}`;
-  await mx.invite(
-    roomId,
-    annonce.sender,
-    `${from} — Tu es dispo ? (${annonce.texte.slice(0, 60)})`
-  );
+  await mx.invite(roomId, annonce.sender, invitationText(annonce, profile));
   return roomId;
 }
 
@@ -214,6 +245,32 @@ export async function acceptBulle(mx: MatrixClient, roomId: string): Promise<voi
   }
   // Only our own announcement can be removed by us: the server refuses anything else.
   await mx.redactEvent(state.wallRoomId, state.annonceEventId).catch(() => undefined);
+}
+
+/**
+ * The client picks one offer: that bubble opens, the request leaves the wall,
+ * and every other offer on the same request is refused (those providers' bubbles disappear).
+ */
+export async function chooseOffre(
+  mx: MatrixClient,
+  roomId: string,
+  otherOfferRoomIds: string[]
+): Promise<void> {
+  await acceptBulle(mx, roomId);
+  await Promise.all(otherOfferRoomIds.map((id) => declineBulle(mx, id).catch(() => undefined)));
+}
+
+/** True when the other person refused our invitation (they never joined): nothing left to wait for. */
+export function wasRefused(room: Room, me: string | null): boolean {
+  if (room.getMyMembership() !== 'join') return false;
+  return room
+    .getMembers()
+    .some(
+      (m) =>
+        m.userId !== me &&
+        m.membership === 'leave' &&
+        m.events.member?.getPrevContent().membership === 'invite'
+    );
 }
 
 /** "Silence Radio": delete every message still there, from both sides, then leave and forget. */

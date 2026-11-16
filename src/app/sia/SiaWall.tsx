@@ -6,7 +6,8 @@ import { useMatrixClient } from '../hooks/useMatrixClient';
 import { openBulle } from './bulle';
 import { siaBullePath } from './paths';
 import { SiaBulleList } from './SiaBulleList';
-import { ROLE_LABELS, SiaProfile, SiaRole } from './profile';
+import { ROLE_LABELS, SiaProfile, SiaRole, formatPrix } from './profile';
+import { cleanBudget } from './wallLogic';
 import { useSiaProfile } from './useSiaProfile';
 import { AUTRE_QUARTIER, QUARTIERS, resolveZone } from './quartiers';
 import { QUARTIERS_LIST_ID, SiaQuartierList } from './SiaQuartierList';
@@ -92,6 +93,7 @@ function PublishForm({ roomId, profile, onDone }: PublishFormProps) {
         categorie: String(form.get('categorie') ?? ''),
         zone: resolveZone(String(form.get('zone') ?? ''), String(form.get('zoneAutre') ?? '')),
         dureeHeures: duree,
+        budget: cleanBudget(String(form.get('budget') ?? '').replace(/[^0-9]/g, '')),
       });
       onDone();
     } catch {
@@ -104,6 +106,12 @@ function PublishForm({ roomId, profile, onDone }: PublishFormProps) {
     <form onSubmit={handleSubmit} style={cardStyle}>
       <Box direction="Column" gap="300">
         <Text size="H5">{isPrestataire ? 'Je suis disponible' : "J'ai besoin d'un service"}</Text>
+        {!isPrestataire && (
+          <Text size="T200" priority="400">
+            Les prestataires en ligne reçoivent ta demande. Ceux qui acceptent t&apos;envoient une
+            offre : tu choisis avec qui parler.
+          </Text>
+        )}
         <Input
           variant="Background"
           outlined
@@ -111,19 +119,30 @@ function PublishForm({ roomId, profile, onDone }: PublishFormProps) {
           maxLength={280}
           autoFocus
           placeholder={
-            isPrestataire ? 'Dispo de 14 h à 17 h pour dépannage' : 'Besoin d’un plombier ce soir'
+            isPrestataire ? 'Dispo de 14 h à 17 h pour dépannage' : 'Fuite sous l’évier, ce soir'
           }
         />
-        <Box gap="200">
+        <Box gap="200" wrap="Wrap">
           <Input
             variant="Background"
             outlined
             name="categorie"
             maxLength={60}
             defaultValue={profile.metier}
-            placeholder="Catégorie"
-            style={{ flexGrow: 1, minWidth: 0 }}
+            placeholder={isPrestataire ? 'Catégorie' : 'Service (ex. plombier)'}
+            style={{ flexGrow: 1, minWidth: toRem(140) }}
           />
+          {!isPrestataire && (
+            <Input
+              variant="Background"
+              outlined
+              name="budget"
+              inputMode="numeric"
+              maxLength={11}
+              placeholder="Ton budget (FCFA)"
+              style={{ flexGrow: 1, minWidth: toRem(140) }}
+            />
+          )}
           <ZoneField defaultZone={profile.zone} />
         </Box>
         <Box gap="200" alignItems="Center" wrap="Wrap">
@@ -166,6 +185,8 @@ type AnnonceCardProps = {
 
 function AnnonceCard({ annonce, now, isMine, onRemove, onDispo, dispoBusy }: AnnonceCardProps) {
   const isPrestataire = annonce.role === 'prestataire';
+  // A provider answers a client's request; a client asks a provider.
+  const actionLabel = isPrestataire ? 'Tu es dispo ?' : "J'accepte cette demande";
   return (
     <Box direction="Column" gap="200" style={cardStyle}>
       <Box justifyContent="SpaceBetween" alignItems="Center" gap="200">
@@ -183,10 +204,15 @@ function AnnonceCard({ annonce, now, isMine, onRemove, onDispo, dispoBusy }: Ann
       <Text size="T300" priority="400">
         {[annonce.categorie, annonce.zone].filter(Boolean).join(' · ')}
       </Text>
+      {annonce.budget > 0 && (
+        <Text size="T300" style={{ color: color.Primary.Main }}>
+          Budget : {formatPrix(annonce.budget)}
+        </Text>
+      )}
       {!isMine && onDispo && (
         <Box>
           <Button size="300" variant="Primary" onClick={onDispo} disabled={dispoBusy}>
-            <Text size="B300">{dispoBusy ? 'Ouverture...' : 'Tu es dispo ?'}</Text>
+            <Text size="B300">{dispoBusy ? 'Ouverture...' : actionLabel}</Text>
           </Button>
         </Box>
       )}
@@ -319,7 +345,7 @@ export function SiaWall() {
             statuts={statuts}
             now={now}
             me={me}
-            onDispo={profile ? handleDispo : undefined}
+            onDispo={profile?.role === 'client' ? handleDispo : undefined}
             dispoBusy={dispoBusy}
           />
 
@@ -340,7 +366,7 @@ export function SiaWall() {
               now={now}
               isMine={a.sender === me}
               onRemove={() => handleRemove(a.eventId)}
-              onDispo={profile ? () => handleDispo(a) : undefined}
+              onDispo={profile && profile.role !== a.role ? () => handleDispo(a) : undefined}
               dispoBusy={dispoBusy === a.eventId}
             />
           ))}

@@ -13,7 +13,18 @@ export type AnnonceFields = {
   /** true = availability status of a provider (shown as a circle), false = ordinary announcement. */
   statut: boolean;
   modalite: 'recoit' | 'deplace' | 'deux' | '';
+  /** Client request only: what the client can pay, in FCFA. 0 = not given. */
+  budget: number;
 };
+
+const MAX_BUDGET = 100_000_000;
+
+/** Reads an untrusted amount: a whole number of FCFA between 1 and 100 000 000, otherwise 0. */
+export function cleanBudget(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n) || n < 1) return 0;
+  return Math.min(Math.floor(n), MAX_BUDGET);
+}
 
 export const cleanText = (value: unknown, max: number): string =>
   typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -47,6 +58,7 @@ export function annonceFromContent(
       data.modalite === 'recoit' || data.modalite === 'deplace' || data.modalite === 'deux'
         ? data.modalite
         : '',
+    budget: data.role === 'client' ? cleanBudget(data.budget) : 0,
   };
 }
 

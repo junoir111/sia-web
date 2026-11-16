@@ -1,10 +1,18 @@
-// SIA: requests received ("Tu es dispo ?") and open bubbles, shown on the wall.
+// SIA: requests received ("Tu es dispo ?"), offers on a client's request, and open bubbles, on the wall.
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClientEvent, Room, RoomEvent } from 'matrix-js-sdk';
+import { ClientEvent, Room, RoomEvent, RoomStateEvent } from 'matrix-js-sdk';
 import { Box, Button, Text, color, config } from 'folds';
 import { useMatrixClient } from '../hooks/useMatrixClient';
-import { acceptBulle, declineBulle, getBulleState, isBulleRoom } from './bulle';
+import {
+  acceptBulle,
+  chooseOffre,
+  declineBulle,
+  getBulleState,
+  isBulleRoom,
+  wasRefused,
+} from './bulle';
+import { Invitation, parseReason, siblingOffers } from './offres';
 import { siaBullePath } from './paths';
 
 function useBulleRooms(): Room[] {
@@ -15,10 +23,12 @@ function useBulleRooms(): Room[] {
     mx.on(ClientEvent.Room, bump);
     mx.on(RoomEvent.MyMembership, bump);
     mx.on(RoomEvent.Name, bump);
+    mx.on(RoomStateEvent.Members, bump);
     return () => {
       mx.off(ClientEvent.Room, bump);
       mx.off(RoomEvent.MyMembership, bump);
       mx.off(RoomEvent.Name, bump);
+      mx.off(RoomStateEvent.Members, bump);
     };
   }, [mx]);
   return mx.getRooms().filter(isBulleRoom);
@@ -32,6 +42,33 @@ const boxStyle = {
   padding: config.space.S300,
 };
 
+type InviteCardProps = {
+  text: string;
+  isOffer: boolean;
+  busy: boolean;
+  onAccept: () => void;
+  onDecline: () => void;
+};
+
+function InviteCard({ text, isOffer, busy, onAccept, onDecline }: InviteCardProps) {
+  return (
+    <Box direction="Column" gap="200" style={boxStyle}>
+      <Text size="L400" style={{ color: color.Primary.Main }}>
+        {isOffer ? 'OFFRE REÇUE' : 'DEMANDE REÇUE'}
+      </Text>
+      <Text size="T300">{text || 'Tu es dispo ?'}</Text>
+      <Box gap="200">
+        <Button size="300" variant="Secondary" fill="Soft" disabled={busy} onClick={onDecline}>
+          <Text size="B300">Refuser</Text>
+        </Button>
+        <Button size="300" variant="Primary" disabled={busy} onClick={onAccept}>
+          <Text size="B300">{isOffer ? 'Choisir → ouvrir la bulle' : 'Je suis dispo → ouvrir la bulle'}</Text>
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
 export function SiaBulleList() {
   const mx = useMatrixClient();
   const navigate = useNavigate();
@@ -41,14 +78,31 @@ export function SiaBulleList() {
   const me = mx.getUserId() ?? '';
 
   const invites = rooms.filter((r) => r.getMyMembership() === 'invite');
-  const open = rooms.filter((r) => r.getMyMembership() === 'join');
+  const open = rooms.filter((r) => r.getMyMembership() === 'join' && !wasRefused(r, me));
+  const refusedRooms = rooms.filter((r) => wasRefused(r, me));
+  const refusedKey = refusedRooms.map((r) => r.roomId).join(',');
+
+  // An offer the client did not pick (or a request refused): that bubble simply disappears.
+  useEffect(() => {
+    refusedKey
+      .split(',')
+      .filter(Boolean)
+      .forEach((roomId) => declineBulle(mx, roomId).catch(() => undefined));
+  }, [mx, refusedKey]);
+
   if (invites.length === 0 && open.length === 0 && !refused) return null;
+
+  const invitations: Invitation[] = invites.map((room) => ({
+    roomId: room.roomId,
+    reason: room.getMember(me)?.events.member?.getContent().reason,
+  }));
+  const offerCount = invitations.filter((i) => parseReason(i.reason).ref).length;
 
   const handleAccept = async (roomId: string) => {
     setBusy(roomId);
     setRefused(false);
     try {
-      await acceptBulle(mx, roomId);
+      await chooseOffre(mx, roomId, siblingOffers(invitations, roomId));
       navigate(siaBullePath(roomId));
     } catch {
       setRefused(true);
@@ -66,34 +120,23 @@ export function SiaBulleList() {
   return (
     <Box direction="Column" gap="200">
       {refused && <Text size="T300">Demande non valide : elle a été refusée.</Text>}
-      {invites.map((room) => {
-        const reason = room.getMember(me)?.events.member?.getContent().reason;
+      {offerCount > 1 && (
+        <Text size="T300">
+          {offerCount} prestataires ont accepté ta demande. Choisis avec qui parler : les autres
+          seront effacés.
+        </Text>
+      )}
+      {invitations.map((inv) => {
+        const { text, ref } = parseReason(inv.reason);
         return (
-          <Box key={room.roomId} direction="Column" gap="200" style={boxStyle}>
-            <Text size="L400" style={{ color: color.Primary.Main }}>
-              DEMANDE REÇUE
-            </Text>
-            <Text size="T300">{typeof reason === 'string' ? reason : 'Tu es dispo ?'}</Text>
-            <Box gap="200">
-              <Button
-                size="300"
-                variant="Secondary"
-                fill="Soft"
-                disabled={busy === room.roomId}
-                onClick={() => handleDecline(room.roomId)}
-              >
-                <Text size="B300">Refuser</Text>
-              </Button>
-              <Button
-                size="300"
-                variant="Primary"
-                disabled={busy === room.roomId}
-                onClick={() => handleAccept(room.roomId)}
-              >
-                <Text size="B300">Je suis dispo → ouvrir la bulle</Text>
-              </Button>
-            </Box>
-          </Box>
+          <InviteCard
+            key={inv.roomId}
+            text={text}
+            isOffer={!!ref}
+            busy={busy === inv.roomId}
+            onAccept={() => handleAccept(inv.roomId)}
+            onDecline={() => handleDecline(inv.roomId)}
+          />
         );
       })}
       {open.map((room) => {
