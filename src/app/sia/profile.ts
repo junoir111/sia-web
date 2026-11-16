@@ -6,14 +6,35 @@ export type SiaRole = 'prestataire' | 'client';
 
 export type SiaModalite = 'recoit' | 'deplace' | 'deux';
 
+// What the provider picks at sign-up.
 export const MODALITE_LABELS: Record<SiaModalite, string> = {
-  recoit: '🏠 Reçoit (maison / atelier)',
-  deplace: '🛵 Se déplace',
-  deux: '🔄 Reçoit et se déplace',
+  deplace: 'Je me déplace',
+  recoit: 'Je reçois à la maison',
+  deux: 'Les deux',
+};
+
+// How the client reads that choice inside the bubble (only one badge is shown).
+export const MODALITE_CLIENT_LABELS: Record<SiaModalite, string> = {
+  deplace: 'Il se déplace chez toi',
+  recoit: 'Tu vas chez lui',
+  deux: 'Il se déplace ou tu vas chez lui',
 };
 
 export const parseModalite = (value: unknown): SiaModalite =>
   value === 'recoit' || value === 'deplace' ? value : 'deux';
+
+// A provider lists up to 3 services, each a short label and a price in FCFA.
+export type SiaService = { label: string; prix: number };
+
+export const MAX_SERVICES = 3;
+export const MAX_SERVICE_LABEL = 40;
+const MAX_PRIX = 100_000_000;
+
+/** "5000" -> "5 000 FCFA"; 0 or less -> "—". Locale-free so it is stable to test. */
+export function formatPrix(prix: number): string {
+  if (!(prix > 0)) return '—';
+  return `${String(Math.floor(prix)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} FCFA`;
+}
 
 export type SiaProfile = {
   role: SiaRole;
@@ -21,12 +42,28 @@ export type SiaProfile = {
   metier: string;
   zone: string;
   modalite: SiaModalite;
+  services: SiaService[];
 };
 
 const MAX_FIELD_LENGTH = 60;
 
 const cleanField = (value: unknown): string =>
   typeof value === 'string' ? value.trim().slice(0, MAX_FIELD_LENGTH) : '';
+
+function parseServices(value: unknown): SiaService[] {
+  if (!Array.isArray(value)) return [];
+  const out: SiaService[] = [];
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) continue;
+    const rec = item as Record<string, unknown>;
+    const label = typeof rec.label === 'string' ? rec.label.trim().slice(0, MAX_SERVICE_LABEL) : '';
+    const n = typeof rec.prix === 'number' ? rec.prix : Number(rec.prix);
+    const prix = Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), MAX_PRIX) : 0;
+    if (label) out.push({ label, prix });
+    if (out.length >= MAX_SERVICES) break;
+  }
+  return out;
+}
 
 /** Reads untrusted account data and returns a valid profile, or undefined. */
 export function parseSiaProfile(content: unknown): SiaProfile | undefined {
@@ -39,8 +76,39 @@ export function parseSiaProfile(content: unknown): SiaProfile | undefined {
     metier: cleanField(data.metier),
     zone: cleanField(data.zone),
     modalite: parseModalite(data.modalite),
+    services: parseServices(data.services),
   };
   return profile.pseudo ? profile : undefined;
+}
+
+// The card shared inside a bubble (never the pseudo: the bubble uses a disposable alias).
+export type SiaFiche = {
+  role: SiaRole;
+  metier: string;
+  zone: string;
+  modalite: SiaModalite;
+  services: SiaService[];
+};
+
+export const ficheFromProfile = (p: SiaProfile): SiaFiche => ({
+  role: p.role,
+  metier: p.metier,
+  zone: p.zone,
+  modalite: p.modalite,
+  services: p.services,
+});
+
+export function parseFiche(content: unknown): SiaFiche | undefined {
+  if (typeof content !== 'object' || content === null) return undefined;
+  const data = content as Record<string, unknown>;
+  if (data.role !== 'prestataire' && data.role !== 'client') return undefined;
+  return {
+    role: data.role,
+    metier: cleanField(data.metier),
+    zone: cleanField(data.zone),
+    modalite: parseModalite(data.modalite),
+    services: parseServices(data.services),
+  };
 }
 
 export const ROLE_LABELS: Record<SiaRole, { title: string; description: string }> = {

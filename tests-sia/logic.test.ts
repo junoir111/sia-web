@@ -3,7 +3,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MESSAGE_LIFETIME_MS, isExpired, remainingMs } from '../src/app/sia/ephemeral.ts';
 import { annonceFromContent, formatRemaining } from '../src/app/sia/wallLogic.ts';
-import { parseSiaProfile, suggestedPseudo } from '../src/app/sia/profile.ts';
+import {
+  parseSiaProfile,
+  suggestedPseudo,
+  formatPrix,
+  parseFiche,
+  MODALITE_CLIENT_LABELS,
+} from '../src/app/sia/profile.ts';
 
 const HOUR = 3600 * 1000;
 const NOW = 1_800_000_000_000;
@@ -84,11 +90,53 @@ test('a profile needs a known role and a pseudo', () => {
       metier: 'Plombier',
       zone: 'PK12',
       modalite: 'deux',
+      services: [],
     }
   );
   assert.equal(parseSiaProfile({ role: 'espion', pseudo: 'x' }), undefined);
   assert.equal(parseSiaProfile({ role: 'client', pseudo: '' }), undefined);
   assert.equal(parseSiaProfile(undefined), undefined);
+});
+
+test('a provider keeps up to 3 valid services with whole prices', () => {
+  const profile = parseSiaProfile({
+    role: 'prestataire',
+    pseudo: 'Delta-4',
+    services: [
+      { label: ' Débouchage évier ', prix: 5000 },
+      { label: 'Fuite', prix: '8000' },
+      { label: '', prix: 1000 },
+      { label: 'Négatif', prix: -5 },
+      { label: 'Trop', prix: 99 },
+    ],
+  });
+  assert.deepEqual(profile?.services, [
+    { label: 'Débouchage évier', prix: 5000 },
+    { label: 'Fuite', prix: 8000 },
+    { label: 'Négatif', prix: 0 },
+  ]);
+});
+
+test('a price is written with spaces and FCFA, 0 shows a dash', () => {
+  assert.equal(formatPrix(5000), '5 000 FCFA');
+  assert.equal(formatPrix(1250000), '1 250 000 FCFA');
+  assert.equal(formatPrix(0), '—');
+});
+
+test('the client reads one clear label for how the provider works', () => {
+  assert.equal(MODALITE_CLIENT_LABELS.deplace, 'Il se déplace chez toi');
+  assert.equal(MODALITE_CLIENT_LABELS.recoit, 'Tu vas chez lui');
+});
+
+test('a fiche is parsed without needing a pseudo', () => {
+  assert.deepEqual(parseFiche({ role: 'prestataire', metier: 'Plombier', zone: 'PK12' }), {
+    role: 'prestataire',
+    metier: 'Plombier',
+    zone: 'PK12',
+    modalite: 'deux',
+    services: [],
+  });
+  assert.equal(parseFiche({ metier: 'x' }), undefined);
 });
 
 test('a zone from the list is kept, and "Autre" takes the typed zone', async () => {

@@ -1,9 +1,19 @@
 // SIA: "La bulle" — a private end-to-end encrypted room between two people, opened from an announcement.
 import { MatrixClient, MatrixEvent, Preset, Room, Visibility } from 'matrix-js-sdk';
-import { SiaProfile, SiaRole, ROLE_LABELS } from './profile';
+import {
+  SiaProfile,
+  SiaRole,
+  SiaFiche,
+  ROLE_LABELS,
+  ficheFromProfile,
+  parseFiche,
+} from './profile';
 import { findWallRoomId, SiaAnnonce } from './wall';
 
 export const SIA_BULLE_STATE = 'io.sia.bulle';
+// The provider's card (services + prices), sent once into the bubble as an ENCRYPTED message,
+// so the server only ever stores ciphertext. Not ephemeral, not shown as a chat line.
+export const SIA_FICHE_EVENT = 'io.sia.fiche';
 export const BULLE_ROOM_NAME = 'SIA · Bulle';
 const JOIN_WAIT_MS = 10_000;
 const JOIN_POLL_MS = 150;
@@ -59,9 +69,46 @@ export function getBulleState(room: Room): BulleState | undefined {
 
 export const isBulleRoom = (room: Room): boolean => room.name === BULLE_ROOM_NAME;
 
-/** Anything written in a bubble (not room state, not a deletion) is ephemeral. */
-export const isBulleMessage = (evt: MatrixEvent): boolean =>
+/** Anything deletable in a bubble: a real message, the fiche, but not room state or a deletion. */
+const isDeletable = (evt: MatrixEvent): boolean =>
   !evt.isState() && !evt.isRedacted() && evt.getType() !== 'm.room.redaction';
+
+/** Ephemeral chat messages only: the fiche is kept (it is the provider's card), so it is excluded here. */
+export const isBulleMessage = (evt: MatrixEvent): boolean =>
+  isDeletable(evt) && evt.getType() !== SIA_FICHE_EVENT;
+
+/** Sends my card into the bubble once (encrypted). The other side reads it to show my services. */
+export async function sendMyFiche(
+  mx: MatrixClient,
+  roomId: string,
+  profile: SiaProfile
+): Promise<void> {
+  const me = mx.getUserId();
+  const room = mx.getRoom(roomId);
+  if (!me || !room) return;
+  const already = room
+    .getLiveTimeline()
+    .getEvents()
+    .some((e) => e.getType() === SIA_FICHE_EVENT && e.getSender() === me && !e.isRedacted());
+  if (already) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await mx.sendEvent(roomId, SIA_FICHE_EVENT as any, ficheFromProfile(profile) as any).catch(
+    () => undefined
+  );
+}
+
+/** The latest card sent by the OTHER person in this bubble (once decrypted), or undefined. */
+export function getOtherFiche(room: Room, me: string | null): SiaFiche | undefined {
+  const events = room.getLiveTimeline().getEvents();
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const e = events[i];
+    if (e.getType() === SIA_FICHE_EVENT && e.getSender() !== me && !e.isRedacted()) {
+      const fiche = parseFiche(e.getContent());
+      if (fiche) return fiche;
+    }
+  }
+  return undefined;
+}
 
 /** "Tu es dispo ?": opens an encrypted bubble with the author of the announcement and invites them. */
 export async function openBulle(
@@ -150,7 +197,7 @@ export async function acceptBulle(mx: MatrixClient, roomId: string): Promise<voi
 export async function silenceRadio(mx: MatrixClient, roomId: string): Promise<void> {
   const room = mx.getRoom(roomId);
   const ids = (room?.getLiveTimeline().getEvents() ?? [])
-    .filter(isBulleMessage)
+    .filter(isDeletable)
     .map((evt) => evt.getId())
     .filter((id): id is string => !!id && !id.startsWith('~'));
   await Promise.all(ids.map((id) => mx.redactEvent(roomId, id).catch(() => undefined)));

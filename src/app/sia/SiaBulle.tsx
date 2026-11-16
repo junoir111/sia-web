@@ -1,10 +1,12 @@
 // SIA: the bubble screen — every message disappears 1 minute after it appears, on both sides.
-import React, { FormEvent, useEffect, useState } from 'react';
+import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MatrixEventEvent, RoomEvent, RoomStateEvent } from 'matrix-js-sdk';
 import { Box, Button, Input, Text, color, config, toRem } from 'folds';
 import { useMatrixClient } from '../hooks/useMatrixClient';
-import { getBulleState, isBulleMessage, silenceRadio } from './bulle';
+import { getBulleState, getOtherFiche, isBulleMessage, sendMyFiche, silenceRadio } from './bulle';
+import { MODALITE_CLIENT_LABELS, SiaFiche, formatPrix } from './profile';
+import { useSiaProfile } from './useSiaProfile';
 import { remainingMs } from './ephemeral';
 import { getSeenAt } from './SiaEphemeralSweeper';
 import { SIA_WALL_PATH } from './paths';
@@ -32,6 +34,61 @@ function useBulleRoom(roomId: string) {
   return { room: mx.getRoom(roomId), version };
 }
 
+type FicheProps = { fiche: SiaFiche; flou: boolean; onToggle: () => void };
+
+/** The provider's card the client reads inside the bubble, with a blur toggle for discretion. */
+function FichePrestataire({ fiche, flou, onToggle }: FicheProps) {
+  return (
+    <Box
+      direction="Column"
+      gap="200"
+      style={{
+        padding: config.space.S300,
+        border: `1px solid ${color.Background.ContainerLine}`,
+        borderRadius: config.radii.R400,
+        backgroundColor: color.SurfaceVariant.Container,
+        color: color.SurfaceVariant.OnContainer,
+      }}
+    >
+      <Box alignItems="Center" justifyContent="SpaceBetween" gap="200">
+        <Text size="T200" priority="400" style={{ letterSpacing: toRem(2) }}>
+          FICHE PRESTATAIRE
+        </Text>
+        <Button size="300" variant="Secondary" fill="Soft" onClick={onToggle}>
+          <Text size="B300">{flou ? 'Déflouter' : 'Flouter'}</Text>
+        </Button>
+      </Box>
+      <Box
+        direction="Column"
+        gap="200"
+        style={{
+          filter: flou ? 'blur(7px)' : undefined,
+          opacity: flou ? 0.5 : 1,
+          userSelect: flou ? 'none' : 'auto',
+          pointerEvents: flou ? 'none' : 'auto',
+          transition: 'filter .18s ease, opacity .18s ease',
+        }}
+      >
+        <Text size="H6">
+          {fiche.metier || 'Service'} · {fiche.zone}
+        </Text>
+        {fiche.services.map((s, i) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <Box key={i} alignItems="Center" justifyContent="SpaceBetween" gap="200">
+            <Text size="T300">{s.label}</Text>
+            <Text size="T300" style={{ color: color.Primary.Main }}>
+              {formatPrix(s.prix)}
+            </Text>
+          </Box>
+        ))}
+        <Text size="T200" priority="400">
+          {MODALITE_CLIENT_LABELS[fiche.modalite]}
+        </Text>
+      </Box>
+    </Box>
+  );
+}
+
 export function SiaBulle() {
   const mx = useMatrixClient();
   const navigate = useNavigate();
@@ -41,16 +98,30 @@ export function SiaBulle() {
   const [now, setNow] = useState(() => Date.now());
   const [sending, setSending] = useState(false);
   const [confirmSilence, setConfirmSilence] = useState(false);
+  const [flou, setFlou] = useState(false);
   const me = mx.getUserId();
+  const profile = useSiaProfile();
+  const sentFicheRef = useRef(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), TICK_MS);
     return () => clearInterval(id);
   }, []);
 
+  // A provider shares their card once, encrypted, as soon as the bubble is joined.
+  useEffect(() => {
+    if (sentFicheRef.current) return;
+    const joined = mx.getRoom(roomId)?.getMyMembership() === 'join';
+    if (joined && profile?.role === 'prestataire') {
+      sentFicheRef.current = true;
+      sendMyFiche(mx, roomId, profile);
+    }
+  }, [mx, roomId, profile, room]);
+
   const state = room ? getBulleState(room) : undefined;
   const aliasOf = (userId: string) => state?.aliases[userId] ?? 'Inconnu';
   const events = room?.getLiveTimeline().getEvents() ?? [];
+  const otherFiche = room ? getOtherFiche(room, me) : undefined;
 
   // Each message is shown for 1 minute from its arrival on this device (timed by SiaEphemeralSweeper,
   // which also deletes it from the server). Anything not seen arriving live stays hidden.
@@ -159,6 +230,12 @@ export function SiaBulle() {
           </Button>
         )}
       </Box>
+
+      {otherFiche?.role === 'prestataire' && (
+        <Box style={{ padding: `${config.space.S300} ${config.space.S400} 0` }}>
+          <FichePrestataire fiche={otherFiche} flou={flou} onToggle={() => setFlou((v) => !v)} />
+        </Box>
+      )}
 
       <Box
         grow="Yes"

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Box, Button, Text, color, config, toRem } from 'folds';
 import { useMatrixClient } from '../hooks/useMatrixClient';
-import { MODALITE_LABELS, SiaProfile } from './profile';
+import { MODALITE_CLIENT_LABELS, SiaProfile } from './profile';
 import { formatRemaining, publishStatut, removeOwnStatuts, SiaAnnonce } from './wall';
 
 type StatutToggleProps = { roomId: string; profile: SiaProfile; annonces: SiaAnnonce[] };
@@ -153,7 +153,9 @@ export function StatutCircles({ statuts, now, me, onDispo, dispoBusy }: StatutCi
           </Box>
           <Text size="H4">{selected.categorie || 'Service'}</Text>
           <Text size="T300">📍 {selected.zone}</Text>
-          {selected.modalite && <Text size="T300">{MODALITE_LABELS[selected.modalite]}</Text>}
+          {selected.modalite && (
+            <Text size="T300">{MODALITE_CLIENT_LABELS[selected.modalite]}</Text>
+          )}
           <Text size="T200" priority="400">
             Disponible encore {formatRemaining(selected.fin, now)}
           </Text>

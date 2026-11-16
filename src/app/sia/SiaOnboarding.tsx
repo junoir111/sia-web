@@ -3,14 +3,21 @@ import React, { FormEvent, useState } from 'react';
 import { Box, Button, Input, Text, color, config, toRem } from 'folds';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import {
+  MAX_SERVICE_LABEL,
+  MAX_SERVICES,
   MODALITE_LABELS,
   ROLE_LABELS,
   SIA_PROFILE_EVENT,
   SiaModalite,
   SiaProfile,
   SiaRole,
+  SiaService,
   suggestedPseudo,
 } from './profile';
+
+type ServiceDraft = { label: string; prix: string };
+const emptyServices = (): ServiceDraft[] =>
+  Array.from({ length: MAX_SERVICES }, () => ({ label: '', prix: '' }));
 
 type RoleCardProps = {
   siaRole: SiaRole;
@@ -50,17 +57,30 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
   const isPrestataire = role === 'prestataire';
-  const [modalite, setModalite] = useState<SiaModalite>('deux');
+  const [modalite, setModalite] = useState<SiaModalite>('deplace');
+  const [services, setServices] = useState<ServiceDraft[]>(emptyServices);
+
+  const setService = (index: number, field: keyof ServiceDraft, value: string) =>
+    setServices((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
 
   const handleSubmit = async (evt: FormEvent<HTMLFormElement>) => {
     evt.preventDefault();
     const form = new FormData(evt.currentTarget);
+    const builtServices: SiaService[] = isPrestataire
+      ? services
+          .map((s) => ({
+            label: s.label.trim().slice(0, MAX_SERVICE_LABEL),
+            prix: Math.max(0, Math.floor(Number(s.prix.replace(/[^0-9]/g, '')) || 0)),
+          }))
+          .filter((s) => s.label)
+      : [];
     const profile: SiaProfile = {
       role,
       pseudo: String(form.get('pseudo') ?? '').trim(),
       metier: String(form.get('metier') ?? '').trim(),
       zone: String(form.get('zone') ?? '').trim(),
       modalite,
+      services: builtServices,
     };
     if (!profile.pseudo || !profile.zone) {
       setError('Le pseudo et la zone sont obligatoires.');
@@ -121,6 +141,39 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
             required
           />
         </Box>
+        {isPrestataire && (
+          <Box direction="Column" gap="100">
+            <Text size="L400">Décris ton service</Text>
+            <Text size="T200" priority="400">
+              Visible seulement dans la bulle · 3 lignes max · quoi + prix
+            </Text>
+            {services.map((s, i) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <Box key={i} gap="200">
+                <Input
+                  variant="Background"
+                  outlined
+                  value={s.label}
+                  onChange={(evt) => setService(i, 'label', evt.currentTarget.value)}
+                  maxLength={MAX_SERVICE_LABEL}
+                  placeholder={i === 0 ? 'Débouchage évier' : 'Autre service...'}
+                  style={{ flexGrow: 1 }}
+                />
+                <Input
+                  variant="Background"
+                  outlined
+                  value={s.prix}
+                  onChange={(evt) =>
+                    setService(i, 'prix', evt.currentTarget.value.replace(/[^0-9]/g, ''))
+                  }
+                  inputMode="numeric"
+                  placeholder="FCFA"
+                  style={{ width: toRem(96) }}
+                />
+              </Box>
+            ))}
+          </Box>
+        )}
         {isPrestataire && (
           <Box direction="Column" gap="100">
             <Text size="L400">Comment tu travailles</Text>
