@@ -9,6 +9,7 @@ import { SiaBulleList } from './SiaBulleList';
 import { ROLE_LABELS, SiaProfile, SiaRole } from './profile';
 import { useSiaProfile } from './useSiaProfile';
 import { AUTRE_QUARTIER, QUARTIERS, resolveZone } from './quartiers';
+import { QUARTIERS_LIST_ID, SiaQuartierList } from './SiaQuartierList';
 import { StatutCircles, StatutToggle } from './SiaStatut';
 import { useWall } from './useWall';
 import { DURATIONS_HOURS, formatRemaining, publishAnnonce, SiaAnnonce } from './wall';
@@ -300,9 +301,12 @@ export function SiaWall() {
               size="300"
               value={zoneFilter}
               onChange={(e) => setZoneFilter(e.currentTarget.value)}
-              placeholder="Zone ou métier..."
+              list={QUARTIERS_LIST_ID}
+              autoComplete="off"
+              placeholder="Cherche un quartier ou un métier..."
               style={{ flexGrow: 1, minWidth: toRem(140) }}
             />
+            <SiaQuartierList />
           </Box>
 
           {profile?.role === 'prestataire' && roomId && (

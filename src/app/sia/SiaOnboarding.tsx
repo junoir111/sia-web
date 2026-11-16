@@ -15,6 +15,7 @@ import {
   SiaService,
   suggestedPseudo,
 } from './profile';
+import { QUARTIERS_LIST_ID, SiaQuartierList } from './SiaQuartierList';
 
 type ServiceDraft = { label: string; prix: string };
 const emptyServices = (): ServiceDraft[] =>
@@ -202,15 +203,21 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
           />
         </Box>
         <Box direction="Column" gap="100">
-          <Text size="L400">Ta zone (quartier)</Text>
+          <Text size="L400">Ton quartier</Text>
           <Input
             variant="Background"
             outlined
             name="zone"
             maxLength={40}
-            placeholder="PK12"
+            list={QUARTIERS_LIST_ID}
+            autoComplete="off"
+            placeholder="Tape ton quartier (ex. Akanda)"
             required
           />
+          <SiaQuartierList />
+          <Text size="T200" priority="400">
+            Les clients cherchent par quartier pour trouver un prestataire près d&apos;eux.
+          </Text>
         </Box>
         {isPrestataire && (
           <Box direction="Column" gap="100">
@@ -250,7 +257,7 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
             <Box alignItems="Center" gap="200">
               <Text size="L400">Photos</Text>
               <Text size="T200" priority="400">
-                3 max · optionnel · privé
+                3 max · facultatif · chiffré
               </Text>
             </Box>
             <PhotoPicker photos={photos} onPick={setPhoto} />
