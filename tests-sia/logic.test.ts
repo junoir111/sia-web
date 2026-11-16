@@ -135,6 +135,7 @@ test('a fiche is parsed without needing a pseudo', () => {
     zone: 'PK12',
     modalite: 'deux',
     services: [],
+    photos: [],
   });
   assert.equal(parseFiche({ metier: 'x' }), undefined);
 });

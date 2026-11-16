@@ -1,4 +1,5 @@
 // SIA: private profile stored in the user's Matrix account data.
+import type { EncryptedAttachmentInfo } from 'browser-encrypt-attachment';
 
 export const SIA_PROFILE_EVENT = 'io.sia.profile';
 
@@ -81,6 +82,30 @@ export function parseSiaProfile(content: unknown): SiaProfile | undefined {
   return profile.pseudo ? profile : undefined;
 }
 
+// One photo: ciphertext in the media repo (mxc) plus the key to decrypt it (kept only in the
+// encrypted bubble event, never on the server in the clear).
+export type SiaPhotoRef = { mxc: string; type: string; encInfo: EncryptedAttachmentInfo };
+
+function parsePhotos(value: unknown): SiaPhotoRef[] {
+  if (!Array.isArray(value)) return [];
+  const out: SiaPhotoRef[] = [];
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) continue;
+    const r = item as Record<string, unknown>;
+    if (
+      typeof r.mxc === 'string' &&
+      r.mxc.startsWith('mxc://') &&
+      typeof r.type === 'string' &&
+      typeof r.encInfo === 'object' &&
+      r.encInfo !== null
+    ) {
+      out.push({ mxc: r.mxc, type: r.type, encInfo: r.encInfo as EncryptedAttachmentInfo });
+    }
+    if (out.length >= MAX_SERVICES) break;
+  }
+  return out;
+}
+
 // The card shared inside a bubble (never the pseudo: the bubble uses a disposable alias).
 export type SiaFiche = {
   role: SiaRole;
@@ -88,6 +113,7 @@ export type SiaFiche = {
   zone: string;
   modalite: SiaModalite;
   services: SiaService[];
+  photos: SiaPhotoRef[];
 };
 
 export const ficheFromProfile = (p: SiaProfile): SiaFiche => ({
@@ -96,6 +122,7 @@ export const ficheFromProfile = (p: SiaProfile): SiaFiche => ({
   zone: p.zone,
   modalite: p.modalite,
   services: p.services,
+  photos: [],
 });
 
 export function parseFiche(content: unknown): SiaFiche | undefined {
@@ -108,6 +135,7 @@ export function parseFiche(content: unknown): SiaFiche | undefined {
     zone: cleanField(data.zone),
     modalite: parseModalite(data.modalite),
     services: parseServices(data.services),
+    photos: parsePhotos(data.photos),
   };
 }
 

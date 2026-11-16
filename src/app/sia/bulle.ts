@@ -4,11 +4,14 @@ import {
   SiaProfile,
   SiaRole,
   SiaFiche,
+  SiaPhotoRef,
   ROLE_LABELS,
   ficheFromProfile,
   parseFiche,
 } from './profile';
 import { findWallRoomId, SiaAnnonce } from './wall';
+import { encryptFile, uploadContent } from '../utils/matrix';
+import { loadLocalPhotos } from './photos';
 
 export const SIA_BULLE_STATE = 'io.sia.bulle';
 // The provider's card (services + prices), sent once into the bubble as an ENCRYPTED message,
@@ -77,7 +80,26 @@ const isDeletable = (evt: MatrixEvent): boolean =>
 export const isBulleMessage = (evt: MatrixEvent): boolean =>
   isDeletable(evt) && evt.getType() !== SIA_FICHE_EVENT;
 
-/** Sends my card into the bubble once (encrypted). The other side reads it to show my services. */
+/** Encrypts each photo with a fresh key and uploads the ciphertext; the keys travel only in the fiche. */
+async function uploadPhotos(mx: MatrixClient, blobs: Blob[]): Promise<SiaPhotoRef[]> {
+  const refs = await Promise.all(
+    blobs.slice(0, 3).map(async (blob): Promise<SiaPhotoRef | undefined> => {
+      try {
+        const type = blob.type || 'image/jpeg';
+        const { encInfo, file } = await encryptFile(new File([blob], 'sia.jpg', { type }));
+        const mxc = await new Promise<string>((resolve, reject) => {
+          uploadContent(mx, file, { hideFilename: true, onSuccess: resolve, onError: reject });
+        });
+        return { mxc, type, encInfo };
+      } catch {
+        return undefined;
+      }
+    })
+  );
+  return refs.filter((r): r is SiaPhotoRef => !!r);
+}
+
+/** Sends my card (and, for a provider, my photos) into the bubble once, encrypted. */
 export async function sendMyFiche(
   mx: MatrixClient,
   roomId: string,
@@ -91,10 +113,11 @@ export async function sendMyFiche(
     .getEvents()
     .some((e) => e.getType() === SIA_FICHE_EVENT && e.getSender() === me && !e.isRedacted());
   if (already) return;
+  const photos =
+    profile.role === 'prestataire' ? await uploadPhotos(mx, await loadLocalPhotos()) : [];
+  const content: SiaFiche = { ...ficheFromProfile(profile), photos };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await mx.sendEvent(roomId, SIA_FICHE_EVENT as any, ficheFromProfile(profile) as any).catch(
-    () => undefined
-  );
+  await mx.sendEvent(roomId, SIA_FICHE_EVENT as any, content as any).catch(() => undefined);
 }
 
 /** The latest card sent by the OTHER person in this bubble (once decrypted), or undefined. */

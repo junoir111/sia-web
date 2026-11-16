@@ -5,7 +5,8 @@ import { MatrixEventEvent, RoomEvent, RoomStateEvent } from 'matrix-js-sdk';
 import { Box, Button, Input, Text, color, config, toRem } from 'folds';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import { getBulleState, getOtherFiche, isBulleMessage, sendMyFiche, silenceRadio } from './bulle';
-import { MODALITE_CLIENT_LABELS, SiaFiche, formatPrix } from './profile';
+import { MODALITE_CLIENT_LABELS, SiaFiche, SiaPhotoRef, formatPrix } from './profile';
+import { decryptFile, downloadEncryptedMedia, mxcUrlToHttp } from '../utils/matrix';
 import { useSiaProfile } from './useSiaProfile';
 import { remainingMs } from './ephemeral';
 import { getSeenAt } from './SiaEphemeralSweeper';
@@ -35,9 +36,38 @@ function useBulleRoom(roomId: string) {
 }
 
 type FicheProps = { fiche: SiaFiche; flou: boolean; onToggle: () => void };
+const PHOTO_VIEW_MS = 5_000;
 
-/** The provider's card the client reads inside the bubble, with a blur toggle for discretion. */
+/** The provider's card the client reads inside the bubble: services, prices, photos, with a blur toggle. */
 function FichePrestataire({ fiche, flou, onToggle }: FicheProps) {
+  const mx = useMatrixClient();
+  const [viewUrl, setViewUrl] = useState<string>();
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => () => (viewUrl ? URL.revokeObjectURL(viewUrl) : undefined), [viewUrl]);
+
+  const revealPhoto = async (ref: SiaPhotoRef) => {
+    if (busy || viewUrl) return;
+    const http = mxcUrlToHttp(mx, ref.mxc, true);
+    if (!http) return;
+    setBusy(true);
+    try {
+      const blob = await downloadEncryptedMedia(http, (buf) =>
+        decryptFile(buf, ref.type, ref.encInfo)
+      );
+      const url = URL.createObjectURL(blob);
+      setViewUrl(url);
+      window.setTimeout(() => {
+        URL.revokeObjectURL(url);
+        setViewUrl((current) => (current === url ? undefined : current));
+      }, PHOTO_VIEW_MS);
+    } catch {
+      // a photo that cannot be fetched or decrypted is simply skipped
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Box
       direction="Column"
@@ -72,6 +102,41 @@ function FichePrestataire({ fiche, flou, onToggle }: FicheProps) {
         <Text size="H6">
           {fiche.metier || 'Service'} · {fiche.zone}
         </Text>
+        {fiche.photos.length > 0 &&
+          (viewUrl ? (
+            <Box direction="Column" gap="100" alignItems="Center">
+              <img
+                src={viewUrl}
+                alt="Photo du prestataire"
+                style={{ maxWidth: '100%', maxHeight: toRem(220), borderRadius: config.radii.R300 }}
+              />
+              <Text size="T200" priority="400">
+                disparaît dans 5 s
+              </Text>
+            </Box>
+          ) : (
+            <Box gap="200">
+              {fiche.photos.map((ref, i) => (
+                <Button
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={i}
+                  type="button"
+                  variant="Secondary"
+                  fill="Soft"
+                  disabled={busy}
+                  onClick={() => revealPhoto(ref)}
+                  style={{ width: toRem(52), height: toRem(52), padding: 0 }}
+                >
+                  <Text size="H5" priority="400">
+                    ◉
+                  </Text>
+                </Button>
+              ))}
+              <Text size="T200" priority="400" style={{ alignSelf: 'center' }}>
+                {busy ? 'ouverture...' : 'touche · 5 s'}
+              </Text>
+            </Box>
+          ))}
         {fiche.services.map((s, i) => (
           // eslint-disable-next-line react/no-array-index-key
           <Box key={i} alignItems="Center" justifyContent="SpaceBetween" gap="200">

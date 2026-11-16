@@ -1,7 +1,8 @@
 // SIA: first screen after login — "Tu es quoi ?" then the profile form.
-import React, { FormEvent, useState } from 'react';
+import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Input, Text, color, config, toRem } from 'folds';
 import { useMatrixClient } from '../hooks/useMatrixClient';
+import { MAX_PHOTOS, compressImage, saveLocalPhotos } from './photos';
 import {
   MAX_SERVICE_LABEL,
   MAX_SERVICES,
@@ -47,6 +48,67 @@ function RoleCard({ siaRole: role, onChoose }: RoleCardProps) {
   );
 }
 
+type PhotoPickerProps = {
+  photos: (Blob | undefined)[];
+  onPick: (index: number, blob: Blob) => void;
+};
+
+/** Three small square slots: tap to take a photo or pick one. Stays on the device only. */
+function PhotoPicker({ photos, onPick }: PhotoPickerProps) {
+  const urls = useMemo(
+    () => photos.map((b) => (b ? URL.createObjectURL(b) : undefined)),
+    [photos]
+  );
+  useEffect(
+    () => () => urls.forEach((u) => (u ? URL.revokeObjectURL(u) : undefined)),
+    [urls]
+  );
+  return (
+    <Box gap="200">
+      {photos.map((b, i) => (
+        <Box
+          // eslint-disable-next-line react/no-array-index-key
+          key={i}
+          as="label"
+          alignItems="Center"
+          justifyContent="Center"
+          style={{
+            width: toRem(56),
+            height: toRem(56),
+            borderRadius: config.radii.R300,
+            border: `1px ${b ? 'solid' : 'dashed'} ${color.Background.ContainerLine}`,
+            backgroundColor: color.Background.Container,
+            overflow: 'hidden',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={async (evt) => {
+              const f = evt.currentTarget.files?.[0];
+              evt.currentTarget.value = '';
+              if (f) onPick(i, await compressImage(f));
+            }}
+          />
+          {urls[i] ? (
+            <img
+              src={urls[i]}
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <Text size="H3" priority="400">
+              +
+            </Text>
+          )}
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
 type ProfileFormProps = {
   role: SiaRole;
   onBack: () => void;
@@ -59,9 +121,15 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
   const isPrestataire = role === 'prestataire';
   const [modalite, setModalite] = useState<SiaModalite>('deplace');
   const [services, setServices] = useState<ServiceDraft[]>(emptyServices);
+  const [photos, setPhotos] = useState<(Blob | undefined)[]>(() =>
+    Array.from({ length: MAX_PHOTOS }, () => undefined)
+  );
 
   const setService = (index: number, field: keyof ServiceDraft, value: string) =>
     setServices((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
+
+  const setPhoto = (index: number, blob: Blob) =>
+    setPhotos((prev) => prev.map((p, i) => (i === index ? blob : p)));
 
   const handleSubmit = async (evt: FormEvent<HTMLFormElement>) => {
     evt.preventDefault();
@@ -89,6 +157,9 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
     setSaving(true);
     setError(undefined);
     try {
+      if (isPrestataire) {
+        await saveLocalPhotos(photos.filter((b): b is Blob => !!b));
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await mx.setAccountData(SIA_PROFILE_EVENT as any, profile as any);
     } catch {
@@ -172,6 +243,17 @@ function ProfileForm({ role, onBack }: ProfileFormProps) {
                 />
               </Box>
             ))}
+          </Box>
+        )}
+        {isPrestataire && (
+          <Box direction="Column" gap="100">
+            <Box alignItems="Center" gap="200">
+              <Text size="L400">Photos</Text>
+              <Text size="T200" priority="400">
+                3 max · optionnel · privé
+              </Text>
+            </Box>
+            <PhotoPicker photos={photos} onPick={setPhoto} />
           </Box>
         )}
         {isPrestataire && (
