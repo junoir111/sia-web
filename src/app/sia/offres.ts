@@ -22,7 +22,7 @@ export type Invitation = { roomId: string; reason: unknown };
 
 /** The other invitations answering the same request as `roomId` (they are refused when one is chosen). */
 export function siblingOffers(invitations: Invitation[], roomId: string): string[] {
-  const ref = parseReason(invitations.find((i) => i.roomId === roomId)?.reason).ref;
+  const { ref } = parseReason(invitations.find((i) => i.roomId === roomId)?.reason);
   if (!ref) return [];
   return invitations
     .filter((i) => i.roomId !== roomId && parseReason(i.reason).ref === ref)

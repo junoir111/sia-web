@@ -204,3 +204,29 @@ test('choosing one offer refuses only the other offers on the same request', () 
   assert.deepEqual(siblingOffers(invitations, '!c'), []);
   assert.deepEqual(siblingOffers(invitations, '!d'), []);
 });
+
+// --- Le Mur: grid of trades ---
+import { metierKey, metierTiles } from '../src/app/sia/murLogic.ts';
+
+test('announcements of the same trade share one tile, whatever the case or spaces', () => {
+  const tiles = metierTiles([
+    { role: 'prestataire', categorie: 'Plombier' },
+    { role: 'prestataire', categorie: ' plombier ' },
+    { role: 'client', categorie: 'PLOMBIER' },
+    { role: 'prestataire', categorie: 'Coiffure' },
+    { role: 'client', categorie: '' },
+  ]);
+  assert.deepEqual(
+    tiles.map((t) => [t.label, t.dispo, t.demandes]),
+    [
+      ['Plombier', 2, 1],
+      ['Autre', 0, 1],
+      ['Coiffure', 1, 0],
+    ]
+  );
+  assert.equal(metierKey('  '), 'autre');
+});
+
+test('no announcement gives no tile', () => {
+  assert.deepEqual(metierTiles([]), []);
+});

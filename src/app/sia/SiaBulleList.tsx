@@ -5,7 +5,6 @@ import { ClientEvent, Room, RoomEvent, RoomStateEvent } from 'matrix-js-sdk';
 import { Box, Button, Text, color, config } from 'folds';
 import { useMatrixClient } from '../hooks/useMatrixClient';
 import {
-  acceptBulle,
   chooseOffre,
   declineBulle,
   getBulleState,
